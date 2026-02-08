@@ -117,7 +117,7 @@ def compute_performance_using_generated_reports():
 
 ---
 
-## 📊 More performance on the MIMIC-CXR test set
+## 📊 More metrics on the MIMIC-CXR test set
 ```json
 {
     'BertScore': 0.5716221332550049,
