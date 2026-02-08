@@ -124,6 +124,7 @@ def compute_performance_using_generated_reports():
     'SemScore': 0.4368664622306824,
     '1/RadCliQ-V1': 1.0102079556023098,
     'RATEScore': 0.5668122046732644,
+    'green': 0.353027779,
     'chexbert_5_micro_f1': 0.5503549017590783,
     'chexbert_5_macro_f1': 0.4862237881570195,
     'chexbert_all_micro_p': 0.5489597467209407,
@@ -174,13 +175,15 @@ bash run_cxr_ft_mlrg_v1011.sh
 If you use or extend our work, please cite our paper at CVPR 2025.
 
 ```bibtex
-@InProceedings{Liu_2025_CVPR,
-    author    = {Liu, Kang and Ma, Zhuoqi and Kang, Xiaolu and Li, Yunan and Xie, Kun and Jiao, Zhicheng and Miao, Qiguang},
-    title     = {Enhanced Contrastive Learning with Multi-view Longitudinal Data for Chest X-ray Report Generation},
-    booktitle = {CVPR},
-    month     = {June},
-    year      = {2025},
-    pages     = {10348-10359}
+@InProceedings{Liu-2025-CVPR,
+  author={Liu, Kang and Ma, Zhuoqi and Kang, Xiaolu and Li, Yunan and Xie, Kun and Jiao, Zhicheng and Miao, Qiguang},
+  booktitle={2025 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 
+  title={Enhanced Contrastive Learning with Multi-view Longitudinal Data for Chest X-ray Report Generation}, 
+  year={2025},
+  volume={},
+  number={},
+  pages={10348-10359},
+  doi={10.1109/CVPR52734.2025.00968}
 }
 ```
 
