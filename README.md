@@ -119,7 +119,22 @@ def compute_performance_using_generated_reports():
 
 ## 📊 More performance on the MIMIC-CXR test set
 ```json
-{'BertScore': 0.5716221332550049, 'SemScore': 0.4368664622306824, '1/RadCliQ-V1': 1.0102079556023098, 'RATEScore': 0.5668122046732644, 'chexbert_5_micro_f1': 0.5503549017590783, 'chexbert_5_macro_f1': 0.4862237881570195, 'chexbert_all_micro_p': 0.5489597467209407, 'chexbert_all_micro_r': 0.467591254935953, 'chexbert_all_micro_f1': 0.5050189837208093, 'chexbert_all_macro_p': 0.4399492462801775, 'chexbert_all_macro_r': 0.354060820803069, 'chexbert_all_macro_f1': 0.3641635446370755, 'BLEU_1': 0.41114996799739173, 'BLEU_2': 0.2769778918508422, 'BLEU_3': 0.20362264525354418, 'BLEU_4': 0.1582088781713785, 'METEOR': 0.17633810974007486, 'ROUGE_L': 0.3195399064699496, 'CIDer': 0.3599887171235284}
+{
+    'BertScore': 0.5716221332550049,
+    'SemScore': 0.4368664622306824,
+    '1/RadCliQ-V1': 1.0102079556023098,
+    'RATEScore': 0.5668122046732644,
+    'chexbert_5_micro_f1': 0.5503549017590783,
+    'chexbert_5_macro_f1': 0.4862237881570195,
+    'chexbert_all_micro_p': 0.5489597467209407,
+    'chexbert_all_micro_r': 0.467591254935953,
+    'chexbert_all_micro_f1': 0.5050189837208093,
+    'chexbert_all_macro_p': 0.4399492462801775,
+    'chexbert_all_macro_r': 0.354060820803069,
+    'chexbert_all_macro_f1': 0.3641635446370755,
+    'BLEU_2': 0.2769778918508422,
+    'CIDer': 0.3599887171235284
+}
 ```
 
 ## 🚀 Training
