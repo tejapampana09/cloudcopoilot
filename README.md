@@ -19,6 +19,7 @@
 
 ## 📢 News
 
+- **2026-02-08** Compute **more metrics, including BertScore, SemScore, 1/RadCliQ-V1, and RATEScore**
 - **2025-05-09** &nbsp; Upload [**poster**](https://github.com/mk-runner/MLRG/tree/main/generated-radiology-reports/mlrg-poster.pdf)  
 - **2025-03-16** &nbsp; Release checkpoints for [MIMIC-ABN](https://huggingface.co/MK-runner/MLRG/tree/main/mimic-abn) and [Two-view CXR](https://huggingface.co/MK-runner/MLRG/blob/main/two-view%20cxr/best_model.ckpt)  
 - **2025-03-01** &nbsp; Upload official code and checkpoints for [MIMIC-CXR](https://huggingface.co/MK-runner/MLRG/tree/main/mimic-cxr)  
@@ -118,7 +119,7 @@ def compute_performance_using_generated_reports():
 ---
 
 ## 📊 More metrics on the MIMIC-CXR test set
-```json
+```python
 {
     'BertScore': 0.5716221332550049,
     'SemScore': 0.4368664622306824,
@@ -133,11 +134,12 @@ def compute_performance_using_generated_reports():
     'chexbert_all_macro_p': 0.4399492462801775,
     'chexbert_all_macro_r': 0.354060820803069,
     'chexbert_all_macro_f1': 0.3641635446370755,
-    'BLEU_2': 0.2769778918508422,
-    'CIDer': 0.3599887171235284
+    'BLEU_1': 0.41114996799739173, 'BLEU_2': 0.2769778918508422,
+    'BLEU_3': 0.20362264525354418, 'BLEU_4': 0.1582088781713785,
+    'METEOR': 0.17633810974007486, 'ROUGE_L': 0.3195399064699496, 'CIDer': 0.3599887171235284
 }
 ```
-
+---
 ## 🚀 Training
 
 **1. Download checkpoints for architecture and metrics.**
