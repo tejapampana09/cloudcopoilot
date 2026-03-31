@@ -40,7 +40,7 @@ pip install -r requirements.txt
 * `torch==2.3.1+cu118`
 * `transformers==4.43.3` (As stated in [Issue #4](https://github.com/mk-runner/MLRG/issues/4), **the `transformers` version should be maintained to prevent potential problems.** Credit goes to [@Andy](https://github.com/andypinxinliu) for this clarification)
 * `torchvision==0.18.1+cu118`
-* `radgraph==0.09`
+* `radgraph==0.0.9`
 > Please refer to `requirements.txt` for more details.
 ---
 
