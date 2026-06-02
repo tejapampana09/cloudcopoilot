@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from transformers.configuration_utils import PretrainedConfig
 from transformers import GPT2TokenizerFast, AutoModel, AutoConfig, AutoImageProcessor
-
+import numpy as np
 from models.bert_model import Transformer, BertCrossLayer
 from tools.resnet import ProjectionHead, get_extended_attention_mask
 from tools.metrics.chexbert import RadGraphMetrics, F1CheXbertMetrics
@@ -237,7 +237,7 @@ class Pretrain(pl.LightningModule):
         inputs['token_type_ids'] = inputs['token_type_ids'].to(device)
         return inputs
 
-    def multiple_positive_contrastive_learning(self, global_image_embed, patient_ids, view_positions):
+    def multiple_positive_contrastive_learning(self, global_image_embed, patient_ids, view_positions, reports):
         # delete prior study
         valid_images_id = [i for i, vp in enumerate(view_positions) if 'prior' not in vp]
         # assert len(valid_images_id) == max(valid_images_id) + 1
@@ -245,8 +245,12 @@ class Pretrain(pl.LightningModule):
         patient_ids = patient_ids[:valid_num_images]
         global_image_embed = global_image_embed[:valid_num_images]
 
-        # obtain targets
+        # obtain targets from the same study
         labels = (patient_ids.reshape(-1, 1) == patient_ids.reshape(1, -1)).astype(float)
+        # identical reports across visits
+        reports = np.array(reports)
+        rep_labels = (reports.reshape(-1, 1) == reports.reshape(1, -1)).astype(float)
+        labels = ((labels + rep_labels) != 0).astype(float)
         labels = torch.from_numpy(labels).to(global_image_embed)
         labels.fill_diagonal_(0.0)
 
@@ -376,7 +380,7 @@ class Pretrain(pl.LightningModule):
         mul_pos_loss = torch.tensor([0.0])
         if self.args['using_mpc_loss']:
             mul_pos_loss = self.multiple_positive_contrastive_learning(image_embed[:, 0, :],
-                                                                       patient_ids, view_positions)
+                                                                       patient_ids, view_positions, reports)
 
         # add temporal positional embedding
         temporal_pos_embed = []
@@ -1309,12 +1313,12 @@ class Finetune(pl.LightningModule):
 #             "best_epoch": -1,
 #             "best_monitor_metric": -1.0,
 #         }
-#
+# 
 #         self.train_loss_metric = torchmetrics.MeanMetric()
-#
+# 
 #         self.val_coco_metrics = COCOCaptionMetrics(metrics=["bleu", "cider", "rouge", "meteor"])
 #         self.test_coco_metrics = COCOCaptionMetrics(metrics=["bleu", "cider", "rouge", "meteor"], save=False)
-#
+# 
 #         # CheXbert classification metrics:
 #         # self.val_chexbert_metrics = CheXbertMetrics(
 #         #     bert_path=args['bert_path'],
@@ -1351,33 +1355,33 @@ class Finetune(pl.LightningModule):
 #             mbatch_size=16,
 #             exp_dir=args['exp_dir_trial'],
 #         )
-#
+# 
 #         # Report logging:
 #         self.val_report_logger = ReportLogger(exp_dir=args['exp_dir_trial'], split='val_reports')
 #         self.test_report_logger = ReportLogger(exp_dir=args['exp_dir_trial'], split='test_reports')
-#
+# 
 #         # Image Encoder:
 #         self.image_processor = AutoImageProcessor.from_pretrained(args['rad_dino_path'])
 #         self.image_encoder = AutoModel.from_pretrained(args['rad_dino_path'])
 #         image_dim = self.image_encoder.config.hidden_size
 #         self.freeze_parameters(self.image_encoder)
-#
+# 
 #         # Text Encoder
 #         self.text_encoder = self.build_text_encoder()
 #         text_dim = self.text_encoder.config.hidden_size
 #         self.freeze_parameters(self.text_encoder)
-#
+# 
 #         # projection head
 #         self.image_projection = ProjectionHead(image_dim, args['hidden_size'] * 2, args['hidden_size'])
 #         self.text_projection = ProjectionHead(text_dim, args['hidden_size'] * 2, args['hidden_size'])
 #         self.freeze_parameters(self.image_projection)
 #         self.freeze_parameters(self.text_projection)
-#
+# 
 #         # layer_norm
 #         self.ln_1 = nn.LayerNorm(image_dim)
 #         self.ln_2 = nn.LayerNorm(args['hidden_size'])
 #         self.ln_3 = nn.LayerNorm(args['hidden_size'])
-#
+# 
 #         # vp_pos_embed for view_position
 #         self.vp2id = json.load(open(args['view_position_embed']))
 #         self.vp_pos_embed = nn.Parameter(torch.randn(len(self.vp2id), 1, image_dim), requires_grad=False)
@@ -1385,14 +1389,14 @@ class Finetune(pl.LightningModule):
 #         self.temp_pos_embed = nn.Parameter(torch.rand(3, 1, args['hidden_size']), requires_grad=False)
 #         # temp_pos_embed for temporal information (0 for ori_image_fea, 1 for temporal_fea)
 #         self.type_pos_embed = nn.Parameter(torch.rand(2, 1, args['hidden_size']), requires_grad=False)
-#
+# 
 #         # # fusion module
 #         self.fusion_multiview = Transformer(args['hidden_size'], args['multiview_fusion_num_layers'],
 #                                             heads=args['num_heads'],
 #                                             dim_head=args['hidden_size'] // 4,
 #                                             mlp_dim=args['hidden_size'])
 #         # self.freeze_parameters(self.fusion_multiview)
-#
+# 
 #         # # Decoder:
 #         # # ckpt_name = 'distilbert/distilgpt2'
 #         self.text_decoder = self.build_text_decoder()
@@ -1409,16 +1413,16 @@ class Finetune(pl.LightningModule):
 #             bos_token_id=tokenizer.bos_token_id,
 #             pad_token_id=tokenizer.pad_token_id,
 #         )
-#
+# 
 #         self.fusion_multimodal = nn.ModuleList(
 #             [BertCrossLayer(fusion_multimodal_config) for _ in range(args['cross_modal_fusion_num_layers'])])
 #         self.freeze_parameters(self.fusion_multimodal)
-#
+# 
 #     def freeze_parameters(self, model):
 #         model.eval()
 #         for para in model.parameters():
 #             para.requires_grad = False
-#
+# 
 #     def build_text_encoder(self):
 #         enc_config = AutoConfig.from_pretrained(self.args['cxr_bert_path'], trust_remote_code=True)
 #         enc_config.vocab_size = len(self.tokenizer)
@@ -1432,7 +1436,7 @@ class Finetune(pl.LightningModule):
 #             config=enc_config,
 #             ignore_mismatched_sizes=True,
 #             trust_remote_code=True)
-#
+# 
 #     def build_text_decoder(self):
 #         config = transformers.GPT2Config.from_pretrained(self.args['distilgpt2_path'])
 #         config.add_cross_attention = True
@@ -1450,7 +1454,7 @@ class Finetune(pl.LightningModule):
 #             decoder = transformers.GPT2LMHeadModel(config=config)
 #             # Resize GPT2 embedding to include padding and beginning of sentence token:
 #             decoder.resize_token_embeddings(len(self.tokenizer))
-#
+# 
 #             checkpoint = torch.load(self.args['cvt2distilgpt2_path'])['state_dict']
 #             checkpoint = {k.split('decoder.encoder_decoder.decoder.')[-1]: v for k, v in checkpoint.items() if
 #                           'decoder' in k}
@@ -1459,35 +1463,35 @@ class Finetune(pl.LightningModule):
 #                                 k in curr_state_dict and v.shape == curr_state_dict[k].shape}
 #             curr_state_dict.update(valid_state_dict)
 #             decoder.load_state_dict(curr_state_dict)
-#
+# 
 #         class DummyEncoder:
 #             main_input_name = 'dummy'
-#
+# 
 #             class DummyConfig(PretrainedConfig):
 #                 model_type = 'bert'
-#
+# 
 #             config = DummyConfig()
-#
+# 
 #             def __init__(self, hidden_size):
 #                 self.config.hidden_size = hidden_size
-#
+# 
 #             def forward(self, *args, **kwargs):
 #                 pass
-#
+# 
 #             def get_output_embeddings(cls):
 #                 return None
-#
+# 
 #         # Use Hugging Face Transformers EncoderDecoderModel to generate conditionally:
 #         dummy_encoder = DummyEncoder(hidden_size=decoder.config.hidden_size)
-#
+# 
 #         # To be compatible with previous the framework (and hence, the available checkpoint):
 #         class Decoder(nn.Module):
 #             def __init__(self):
 #                 super().__init__()
 #                 self.encoder_decoder = transformers.EncoderDecoderModel(encoder=dummy_encoder, decoder=decoder)
-#
+# 
 #         return Decoder()
-#
+# 
 #     def setup(self, stage=None):
 #         """
 #         https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html#setup
@@ -1507,7 +1511,7 @@ class Finetune(pl.LightningModule):
 #             self.test_set = MimiccxrFinetuneDataset(self.args, 'test', self.tokenizer)
 #             print("No. of test examples: {}.".format(self.test_set.__len__()))
 #             self.mylog.info("No. of test examples: {}.".format(self.test_set.__len__()))
-#
+# 
 #     def train_dataloader(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#train-dataloader
@@ -1522,7 +1526,7 @@ class Finetune(pl.LightningModule):
 #             collate_fn=collate_fn,
 #             drop_last=True,
 #         )
-#
+# 
 #     def val_dataloader(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#val-dataloader
@@ -1536,7 +1540,7 @@ class Finetune(pl.LightningModule):
 #             prefetch_factor=self.prefetch_factor,
 #             collate_fn=collate_fn
 #         )
-#
+# 
 #     def test_dataloader(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#test-dataloader
@@ -1550,7 +1554,7 @@ class Finetune(pl.LightningModule):
 #             prefetch_factor=self.prefetch_factor,
 #             collate_fn=collate_fn
 #         )
-#
+# 
 #     def configure_optimizers(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#configure-optimizers
@@ -1582,11 +1586,11 @@ class Finetune(pl.LightningModule):
 #                     if not param.requires_grad:
 #                         continue
 #                     finetune_main_params.append(param)
-#
+# 
 #             optimiser = torch.optim.AdamW(
 #                 [{'params': pretrain_main_params, 'lr': self.args['pt_lr']},
 #                  {'params': finetune_main_params, 'lr': self.args['ft_lr']}])
-#
+# 
 #             lr_scheduler = ReduceLROnPlateau(optimiser, mode='max', factor=0.1, patience=5)
 #             return {
 #                 "optimizer": optimiser,
@@ -1596,7 +1600,7 @@ class Finetune(pl.LightningModule):
 #                     'frequency': 1   # the frequency of check
 #                 }
 #             }
-#
+# 
 #     def tokenization(self, text, pair_text=None, device=None):
 #         if pair_text is None:
 #             inputs = self.tokenizer(text, padding=True, return_tensors='pt', return_token_type_ids=True,
@@ -1609,23 +1613,23 @@ class Finetune(pl.LightningModule):
 #         inputs['attention_mask'] = inputs['attention_mask'].to(device)
 #         inputs['token_type_ids'] = inputs['token_type_ids'].to(device)
 #         return inputs
-#
+# 
 #     def obtain_decoder_input_ids(self, inputs):
 #         decoder_input_ids = inputs['input_ids']
 #         decoder_attention_mask = inputs['attention_mask'][:, :-1]  # string + [eos]
 #         label_ids = decoder_input_ids[:, 1:].detach().clone()
 #         label_ids[label_ids == self.tokenizer.pad_token_id] = -100
-#
+# 
 #         decoder_input_ids = decoder_input_ids[:, :-1]
 #         decoder_input_ids[decoder_input_ids == self.tokenizer.sep_token_id] = self.tokenizer.pad_token_id
 #         return decoder_input_ids, decoder_attention_mask, label_ids
-#
+# 
 #     def obtain_reference_reports(self, text):
 #         inputs = self.tokenizer(text, padding=True, max_length=self.args['max_length'],
 #                                 truncation=True, return_tensors='pt')
 #         ref_reports = self.tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=True)
 #         return ref_reports
-#
+# 
 #     def multiple_positive_contrastive_learning(self, global_image_embed, patient_ids, view_positions):
 #         # delete prior study
 #         valid_images_id = [i for i, vp in enumerate(view_positions) if 'prior' not in vp]
@@ -1633,36 +1637,36 @@ class Finetune(pl.LightningModule):
 #         valid_num_images = len(valid_images_id)
 #         patient_ids = patient_ids[:valid_num_images]
 #         global_image_embed = global_image_embed[:valid_num_images]
-#
+# 
 #         # obtain targets
 #         labels = (patient_ids.reshape(-1, 1) == patient_ids.reshape(1, -1)).astype(float)
 #         labels = torch.from_numpy(labels).to(global_image_embed)
 #         labels.fill_diagonal_(0.0)
-#
+# 
 #         # remove one-view image embed
 #         idx = torch.argwhere(labels.sum(1) != 0).reshape(-1)
 #         if len(idx) == 0:  # avoid all samples in a batch are one-view
 #             return torch.tensor([0.0], requires_grad=True, device=global_image_embed.device)
 #         global_image_embed, labels = global_image_embed[idx], labels[idx][:, idx]
 #         labels = labels / labels.sum(1, keepdim=True)
-#
+# 
 #         # calculated multiview loss
 #         global_image_embed = F.normalize(global_image_embed, dim=-1, p=2)
 #         logits = global_image_embed @ global_image_embed.T / self.args['temp']
 #         logits.fill_diagonal_(-1e9)
-#
+# 
 #         # stable logits
 #         logits_max, _ = torch.max(logits, dim=-1, keepdim=True)
 #         logits = logits - logits_max.detach()
 #         loss = F.cross_entropy(logits, labels)
 #         return loss
-#
+# 
 #     def multiview_fusion_network(self, image_embed, patient_ids, batch_size, view_positions):
 #         # obtain labels indicate corresponding multiview images
 #         labels = (patient_ids.reshape(-1, 1) == patient_ids.reshape(1, -1)).astype(int)
 #         labels = torch.from_numpy(labels)
 #         labels.fill_diagonal_(0)
-#
+# 
 #         new_image_embed = []
 #         for i in range(batch_size):
 #             if labels[i].sum() == 0:
@@ -1672,11 +1676,11 @@ class Finetune(pl.LightningModule):
 #             # include multiview images
 #             cur_image_embed = self.fusion_multiview(image_embed[i], multiview_image_embed,
 #                                                     multiview_image_embed)
-#
+# 
 #             new_image_embed.append(cur_image_embed)
 #         new_image_embed = torch.stack(new_image_embed, dim=0)
 #         return new_image_embed
-#
+# 
 #     def global_alignment_loss(self, global_image_embed, global_text_embed, patient_ids):
 #         # obtain multi-positive target
 #         patient_ids = patient_ids[:global_image_embed.shape[0]]
@@ -1684,11 +1688,11 @@ class Finetune(pl.LightningModule):
 #         labels = torch.from_numpy(labels).float().to(global_image_embed.device)
 #         labels = labels / labels.sum(1, keepdim=True)
 #         del patient_ids
-#
+# 
 #         # normalize
 #         global_image_embed = F.normalize(global_image_embed, dim=-1, p=2)
 #         global_text_embed = F.normalize(global_text_embed, dim=-1, p=2)
-#
+# 
 #         # calculate the InfoNCE loss
 #         instance_sim = global_image_embed @ global_text_embed.t()
 #         instance_sim_1 = global_text_embed @ global_image_embed.t()
@@ -1696,14 +1700,14 @@ class Finetune(pl.LightningModule):
 #         loss_instance_2 = F.cross_entropy(instance_sim_1 / self.args['temp'], labels)
 #         global_instance_loss = (loss_instance_1 + loss_instance_2) / 2.0
 #         return global_instance_loss
-#
+# 
 #     def local_text_token_alignment_loss(self, local_image_embed, local_text_embed):
 #         # cross-modal alignment between image patches and sentence embed in reports
-#
+# 
 #         t_att_sim = local_text_embed @ local_image_embed.permute(0, 2, 1).contiguous()
 #         t_att_sco = F.softmax(t_att_sim / math.sqrt(local_image_embed.shape[2]), dim=-1)
 #         t_att_output = torch.bmm(t_att_sco, local_image_embed)
-#
+# 
 #         device = local_image_embed.device
 #         # normalize
 #         t_att_output = F.normalize(t_att_output, dim=-1, p=2)
@@ -1713,26 +1717,26 @@ class Finetune(pl.LightningModule):
 #         word_sim_1 = rearrange(word_sim, "b n1 n2 -> (b n1) n2")  # the similarity between each word and each each
 #         word_targets = torch.arange(word_sim.shape[1]).long().repeat(word_sim.shape[0]).to(device)
 #         loss_word_1 = F.cross_entropy(word_sim_1, word_targets)
-#
+# 
 #         word_sim_2 = rearrange(word_sim, "b n1 n2 -> (b n2) n1")
 #         loss_word_2 = F.cross_entropy(word_sim_2, word_targets)
 #         loss_word = (loss_word_2 + loss_word_1) / 2.0
 #         return loss_word
-#
+# 
 #     def text_encoder_forward(self, inputs):
 #         # obtain the text_encoder forward
 #         text_embed = self.text_encoder(**inputs)
 #         text_embed = self.text_projection(text_embed['last_hidden_state'])  # (b, token_num, 768)
 #         return text_embed
-#
+# 
 #     def image_encoder_forward(self, images, view_positions):
 #         """
 #         Encoder forward propagation.
-#
+# 
 #         Argument/s:
 #             images - a mini-batch of images.
 #             image_batch_ids - batch index for each image.
-#
+# 
 #         Returns:
 #             encoder_outputs - transformers.modeling_outputs.ModelOutput.
 #         """
@@ -1747,9 +1751,9 @@ class Finetune(pl.LightningModule):
 #         image_embed = self.ln_1(image_embed)
 #         # projection head
 #         image_embed = self.image_projection(image_embed)  # (b, 1371, 768)
-#
+# 
 #         return image_embed
-#
+# 
 #     def forward(self, images, patient_ids, view_positions, indications, prior_reports, reports=None, mode='train'):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#forward
@@ -1758,7 +1762,7 @@ class Finetune(pl.LightningModule):
 #         images = images.cuda()
 #         device = images.device
 #         batch_size = len(indications)
-#
+# 
 #         # obtain the prompt_embed (including indications and prior_reports)
 #         # token embedding + position embedding + segment embedding
 #         prompt_embed = None
@@ -1773,11 +1777,11 @@ class Finetune(pl.LightningModule):
 #             if self.args['is_prior_report']:
 #                 prompt_inputs = self.tokenization(prior_reports, pair_text=None, device=device)
 #                 prompt_embed = self.text_encoder_forward(prompt_inputs)
-#
+# 
 #         image_embed = self.image_encoder_forward(images, view_positions)
 #         ori_image_embed = image_embed[:batch_size] + torch.cat([self.type_pos_embed[0].unsqueeze(0)] * batch_size,
 #                                                                dim=0)
-#
+# 
 #         # mul-positive contrastive learning
 #         # add temporal_pos_embd
 #         temporal_pos_embed = []
@@ -1798,18 +1802,18 @@ class Finetune(pl.LightningModule):
 #         else:
 #             # add temporal positional embedding
 #             image_embed = image_embed[:batch_size]
-#
+# 
 #         # cat ori_image_embed, tempor_image_embed
 #         image_embed = image_embed + torch.cat([self.type_pos_embed[1].unsqueeze(0)] * batch_size, dim=0)
 #         image_embed = torch.cat([ori_image_embed, image_embed], dim=1)
 #         image_embed = self.ln_3(image_embed)
-#
+# 
 #         if prompt_embed is not None:
 #             # integrate prompt information using cross-attention
 #             encoder_attention_mask = torch.ones(image_embed.size()[:2], dtype=torch.long).to(device)
 #             extended_image_masks = get_extended_attention_mask(encoder_attention_mask, encoder_attention_mask.size())
 #             extended_text_masks = get_extended_attention_mask(prompt_inputs['attention_mask'], prompt_embed.size())
-#
+# 
 #             x, y = image_embed.clone(), prompt_embed
 #             for layer_idx, image_layer in enumerate(self.fusion_multimodal):
 #                 x1 = image_layer(x, y, attention_mask=extended_image_masks,
@@ -1834,19 +1838,19 @@ class Finetune(pl.LightningModule):
 #             outputs = self.generate(encoder_outputs)
 #             generated_reports = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
 #             return generated_reports
-#
+# 
 #     def generate(self, encoder_outputs):
 #         """
 #         Autoregressive generate a prediction.
-#
+# 
 #         Argument/s:
 #             num_beams - number of considered beams for the search (one beam is a greedy search).
 #             images - images for the encoder.
-#
+# 
 #         Returns:
 #             Indices of the tokens for the predicted sequence.
 #         """
-#
+# 
 #         outputs = self.text_decoder.encoder_decoder.generate(
 #             # special_token_ids=[self.tokenizer.sep_token_id],
 #             max_length=self.args['max_length'],
@@ -1858,9 +1862,9 @@ class Finetune(pl.LightningModule):
 #             use_cache=True,
 #             encoder_outputs=encoder_outputs,
 #         )
-#
+# 
 #         return outputs['sequences']
-#
+# 
 #     def training_step(self, batch, batch_idx):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#training-step
@@ -1868,7 +1872,7 @@ class Finetune(pl.LightningModule):
 #         image_ids, images, reports, patient_ids, view_positions, indications, prior_reports = batch
 #         # Inference:
 #         loss = self(images, patient_ids, view_positions, indications, prior_reports, reports=reports, mode='train')
-#
+# 
 #         self.log_dict({'lm_loss': loss}, on_step=True, on_epoch=True, batch_size=len(reports),
 #                       prog_bar=True, sync_dist=True)
 #         self.train_loss_metric.update(loss)
@@ -1878,7 +1882,7 @@ class Finetune(pl.LightningModule):
 #                 f"{loss.detach().item()}, lr: {self.optimizers().param_groups[0]['lr']},"
 #                 f"{self.optimizers().param_groups[1]['lr']}")
 #         return loss
-#
+# 
 #     def validation_step(self, batch, batch_idx):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#validation-step
@@ -1889,20 +1893,20 @@ class Finetune(pl.LightningModule):
 #                                  reports=None, mode='sample')
 #         generated_reports = [text if len(text) > 0 else "..." for text in generated_reports]
 #         reference_reports = self.obtain_reference_reports(reports)  # remove special tokens
-#
+# 
 #         if batch_idx % self.args['print_step'] == 0 or batch_idx + 1 == self.trainer.num_val_batches[0]:
 #             self.mylog.info(
 #                 f"Epoch {self.current_epoch}, validation step {batch_idx}/{self.trainer.num_val_batches[0]}")
-#
+# 
 #         # # Log reports:
 #         self.val_report_logger.update(generated_reports, dicom_ids=image_ids, labels=reference_reports)
-#
+# 
 #         # # Evaluate:
 #         # self.val_chexbert_metrics.update(generated_reports, reference_reports, ids=image_ids)
 #         self.val_f1chexbert_metrics.update(generated_reports, reference_reports, ids=image_ids)
 #         self.val_coco_metrics.update(generated_reports, reference_reports, ids=image_ids)
 #         self.val_radgraph_metrics.update(generated_reports, reference_reports, ids=image_ids)
-#
+# 
 #     def test_step(self, batch, batch_idx):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#test-step
@@ -1912,11 +1916,11 @@ class Finetune(pl.LightningModule):
 #         generated_reports = self(images, patient_ids, view_positions, indications, prior_reports,
 #                                  reports=None, mode='sample')
 #         reference_reports = self.obtain_reference_reports(reports)  # remove special tokens
-#
+# 
 #         if batch_idx % self.args['print_step'] == 0 or batch_idx + 1 == self.trainer.num_test_batches[0]:
 #             self.mylog.info(
 #                 f"Testing step {batch_idx}/{self.trainer.num_test_batches[0]}")
-#
+# 
 #         # Log reports:
 #         self.test_report_logger.update(generated_reports, dicom_ids=image_ids, labels=reference_reports)
 #         #
@@ -1925,7 +1929,7 @@ class Finetune(pl.LightningModule):
 #         self.test_f1chexbert_metrics.update(generated_reports, reference_reports, ids=image_ids)
 #         self.test_coco_metrics.update(generated_reports, reference_reports, ids=image_ids)
 #         self.test_radgraph_metrics.update(generated_reports, reference_reports, ids=image_ids)
-#
+# 
 #     def on_train_epoch_end(self):
 #         epoch_loss = self.train_loss_metric.compute()
 #         self.train_loss_metric.reset()
@@ -1935,7 +1939,7 @@ class Finetune(pl.LightningModule):
 #             f"{self.optimizers().param_groups[1]['lr']}"
 #             "\n###############################################################"
 #         )
-#
+# 
 #     def on_validation_epoch_end(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#on-validation-epoch-end
@@ -1949,12 +1953,12 @@ class Finetune(pl.LightningModule):
 #         output = self.val_radgraph_metrics.compute()
 #         scores.update(output)
 #         self.val_radgraph_metrics.reset()
-#
+# 
 #         # chexbert
 #         output = self.val_f1chexbert_metrics.compute()
 #         scores.update(output)
 #         self.val_f1chexbert_metrics.reset()
-#
+# 
 #         # output = self.val_chexbert_metrics.compute()
 #         # scores.update(output)
 #         # self.val_chexbert_metrics.reset()
@@ -1962,19 +1966,19 @@ class Finetune(pl.LightningModule):
 #         output = self.val_coco_metrics.compute()
 #         scores.update(output)
 #         self.val_coco_metrics.reset()
-#
+# 
 #         scores['RB'] = scores['F1-Radgraph-partial'] + scores['chen_bleu_4']
 #         scores['RC'] = scores['F1-Radgraph-partial'] + scores['chexbert_all_micro_f1']
 #         scores['RCB'] = scores['F1-Radgraph-partial'] + scores['chen_bleu_4'] + scores['chexbert_all_micro_f1']
-#
+# 
 #         self.log_dict({f'{k}': v for k, v in scores.items()}, on_step=False, on_epoch=True)
-#
+# 
 #         if scores[self.args['monitor_metric']] > self.val_best_scores['best_monitor_metric']:
 #             self.val_best_scores = {
 #                 "best_epoch": self.current_epoch,
 #                 'best_monitor_metric': scores[self.args['monitor_metric']]
 #             }
-#
+# 
 #         metrics_item = '\n'.join([f'{k}: {v}' for k, v in scores.items()])
 #         self.mylog.info(
 #             "###############################################################\n"
@@ -1983,41 +1987,41 @@ class Finetune(pl.LightningModule):
 #             f"best val_metrics: {self.args['monitor_metric']} = {self.val_best_scores['best_monitor_metric']}\n"
 #             f"{metrics_item} \n"
 #         )
-#
+# 
 #     def on_test_epoch_end(self):
 #         """
 #         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#on-test-epoch-end
 #         """
-#
+# 
 #         # Save reports:
 #         self.test_report_logger.log(1)
 #         self.test_report_logger.compute(self.current_epoch)
 #         self.test_report_logger.reset()
-#
+# 
 #         scores = {}
 #         output = self.test_radgraph_metrics.compute()
 #         scores.update(output)
 #         self.test_radgraph_metrics.reset()
-#
+# 
 #         # output = self.test_chexbert_metrics.compute()
 #         # scores.update(output)
 #         # self.test_chexbert_metrics.reset()
-#
+# 
 #         output = self.test_f1chexbert_metrics.compute()
 #         scores.update(output)
 #         self.test_f1chexbert_metrics.reset()
-#
+# 
 #         output = self.test_coco_metrics.compute()
 #         scores.update(output)
 #         self.test_coco_metrics.reset()
-#
+# 
 #         scores['RB'] = scores['F1-Radgraph-partial'] + scores['chen_bleu_4']
 #         scores['RC'] = scores['F1-Radgraph-partial'] + scores['chexbert_all_micro_f1']
 #         scores['RCB'] = scores['F1-Radgraph-partial'] + scores['chen_bleu_4'] + scores['chexbert_all_micro_f1']
-#
+# 
 #         print('\n')
 #         print(scores)
-#
+# 
 #         self.log_dict({f'{k}': v for k, v in scores.items()}, on_step=False, on_epoch=True)
 #         metrics_item = '\n'.join([f'{k}: {v}' for k, v in scores.items()])
 #         self.mylog.info(
