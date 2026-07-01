@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PiggyBank, HelpCircle, ChevronDown } from 'lucide-react';
 import type { DeploymentRecommendation } from '../types';
+import { EXCHANGE_RATE } from '../constants';
 
 interface CostCardProps {
   recommendation: DeploymentRecommendation;
@@ -9,9 +10,6 @@ interface CostCardProps {
 export const CostCard: React.FC<CostCardProps> = ({ recommendation }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annually'>('monthly');
   const usdTotal = recommendation.estimated_monthly_cost;
-  
-  // Exchange rate to convert USD to INR
-  const EXCHANGE_RATE = 83.33;
 
   // Convert USD breakdown values to INR
   const getInrValue = (usdVal: number) => {

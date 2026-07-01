@@ -1,8 +1,11 @@
+import logging
 import os
 import json
 import datetime
 from typing import Dict, Any, List
 from langgraph.graph import StateGraph, END
+
+logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 from app.agents.infra_state import InfrastructureState
@@ -348,8 +351,8 @@ def validation_agent_node(state: InfrastructureState) -> InfrastructureState:
         report = json.loads(response)
         score = report.get("score", score)
         results = report.get("results", results)
-    except:
-        pass
+    except Exception as e:
+        logger.exception("LLM validation step failed in infra_graph for generation %s", gen_id)
         
     state['validation_report'] = {
         "score": score,

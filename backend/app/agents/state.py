@@ -1,7 +1,8 @@
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List, Optional, Dict, Any
 from app.schemas.analyzer import RepoMetadata, DeploymentRecommendation, HealthBreakdown, ChecklistItem, AgentLog
+from app.schemas.architecture import ArchitectureSummary, TechnologyAnalysis, AWSRecommendationDetail, VisualizationJSON
 
-class AnalyzerState(TypedDict):
+class AnalyzerState(TypedDict, total=False):
     repository_url: str
     task_id: str
     owner: str
@@ -15,3 +16,15 @@ class AnalyzerState(TypedDict):
     ai_summary: Optional[str]
     logs: List[AgentLog]
     error: Optional[str]
+    repository_context: Optional[Dict[str, Any]]
+    technology_analysis: Optional[TechnologyAnalysis]
+    architecture_analysis: Optional[ArchitectureSummary]
+    aws_recommendations: Optional[List[AWSRecommendationDetail]]
+    confidence: Optional[Dict[str, str]]
+    reasoning: Optional[str]
+    architecture_report: Optional[Dict[str, Any]]
+    visualization: Optional[VisualizationJSON]
+    security_notes: Optional[str]
+    performance_notes: Optional[str]
+    cost_analysis: Optional[str]
+    deployment_strategy: Optional[str]

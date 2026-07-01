@@ -1,8 +1,11 @@
+import logging
 import os
 import re
 import json
 from typing import List, Dict, Any, Tuple
 from app.schemas.analyzer import RepoMetadata, LanguageInfo
+
+logger = logging.getLogger(__name__)
 
 EXTENSION_MAP = {
     '.py': 'Python',
@@ -236,8 +239,8 @@ class HeuristicScanner:
                     if len(lines[0]) < 30:
                         return lines[0]
                     return "Custom"
-        except:
-            pass
+        except Exception as e:
+            logger.exception("Failed to parse license file: %s", filepath)
         return "Unknown"
 
     @staticmethod
@@ -306,8 +309,8 @@ class HeuristicScanner:
                 test_frameworks.append("Mocha")
             if 'cypress' in deps:
                 test_frameworks.append("Cypress")
-        except:
-            pass
+        except Exception as e:
+            logger.exception("Failed to parse package.json: %s", filepath)
 
     @staticmethod
     def _parse_requirements_txt(filepath: str, frameworks: List[str], backend: List[str], databases: List[str], test_frameworks: List[str]) -> None:
@@ -336,8 +339,8 @@ class HeuristicScanner:
                 
             if 'pytest' in content:
                 test_frameworks.append("pytest")
-        except:
-            pass
+        except Exception as e:
+            logger.exception("Failed to parse requirements.txt: %s", filepath)
 
     @staticmethod
     def _parse_pyproject_toml(filepath: str, frameworks: List[str], backend: List[str], databases: List[str], test_frameworks: List[str]) -> None:
@@ -366,8 +369,8 @@ class HeuristicScanner:
                 
             if 'pytest' in content:
                 test_frameworks.append("pytest")
-        except:
-            pass
+        except Exception as e:
+            logger.exception("Failed to parse pyproject.toml: %s", filepath)
 
     @staticmethod
     def _find_file_full_path(dir_path: str, filename: str) -> str | None:
@@ -399,8 +402,8 @@ class HeuristicScanner:
                             var_name = re.sub(r'^(export\s+)', '', var_name).strip()
                             if re.match(r'^[A-Z_][A-Z0-9_]*$', var_name):
                                 env_vars.add(var_name)
-            except:
-                pass
+            except Exception as e:
+                logger.exception("Failed to parse env example file: %s", env_example_path)
                 
         # 2. Heuristically search codebase files if empty or for extra safety
         # Limit scanning to 100 source files to prevent scanning huge repos
@@ -431,8 +434,8 @@ class HeuristicScanner:
                             env_vars.add(m.group(1))
                         for m in py_regex_2.finditer(content):
                             env_vars.add(m.group(1))
-                except:
-                    pass
+                except Exception as e:
+                    logger.exception("Failed to scan env variables in file: %s", filepath)
                     
         # Filter common non-environment-variables (like NODE_ENV)
         filter_out = {'NODE_ENV', 'PORT', 'PATH', 'TEMP'}
@@ -465,7 +468,7 @@ class HeuristicScanner:
                 return "High"
             elif file_size > 500 or headers_count >= 2:
                 return "Medium"
-        except:
-            pass
+        except Exception as e:
+            logger.exception("Failed to assess README quality for dir: %s", dir_path)
             
         return "Low"

@@ -1,6 +1,6 @@
 # CloudPilot AI – Phase 1: Repository Analyzer
 
-CloudPilot AI is an AI-powered AWS deployment planner that inspects any public GitHub repository and designs an optimized deployment target recommendation, monthly AWS cost estimate, cloud readiness score, and a verification checklist.
+CloudPilot AI is a repository analysis platform with AI-assisted deployment recommendations and heuristic cloud planning. It inspects any public GitHub repository and designs an optimized deployment target recommendation, monthly AWS cost estimate, cloud readiness score, and a verification checklist.
 
 This repository represents **Phase 1: Repository Analyzer** built using FastAPI, React 19, Tailwind CSS v4, and LangGraph.
 
@@ -102,3 +102,23 @@ npm run dev
 2. Open your browser to `http://localhost:5173`.
 3. Paste a public GitHub URL (e.g., `https://github.com/fastapi/fastapi` or `https://github.com/facebook/react`).
 4. Click **Analyze Repository** to observe the real-time agent workflow logs and final AWS deployment recommendations.
+
+## Current Limitations
+- Phase 1 focuses on repository analysis, heuristics, and deployment recommendations, not on production-grade infrastructure orchestration.
+- The AI guidance is based on heuristics and repository metadata; it may not cover every custom build or cloud pattern.
+- Authentication, secrets scanning, and public deployment hardening are intentionally limited in this phase.
+
+## Roadmap
+- Add robust production deployment tips, integration tests, and CI/CD generation.
+- Improve infrastructure recommendations with real AWS service matching and cost profiling.
+- Add observability, error tracking, and better user session validation.
+
+## Known Issues
+- SSE streams may drop if the backend token is not provided correctly in the query string.
+- Some repository scans may miss non-standard project layouts or custom build scripts.
+- OpenAI model configuration is optional, and feature quality depends on API availability.
+
+## Architecture
+- `backend/` contains the FastAPI service, scan workflow, and SSE streaming endpoints.
+- `frontend/` contains the React 19 + Vite SPA, SSE client hooks, and cost/analysis dashboard.
+- `shared/` contains common TypeScript interfaces.

@@ -10,6 +10,16 @@ from app.agents.state import AnalyzerState
 from app.services.git_service import GitService
 from app.services.scanner import HeuristicScanner
 from app.services.cost_estimator import CostEstimator
+from app.analysis.context_builder import RepositoryContextBuilder
+from app.analysis.technology_analyzer import TechnologyAnalyzer
+from app.architecture.architecture_analyzer import ArchitectureAnalyzer
+from app.reasoning.reasoning_engine import ReasoningEngine
+from app.recommendations.aws_decision_engine import AWSDecisionEngine
+from app.reports.report_generator import ReportGenerator
+from app.schemas.architecture import (
+    ArchitectureSummary, AWSRecommendationDetail, TechnologyAnalysis,
+    RepositoryContext, VisualizationJSON
+)
 from app.schemas.analyzer import (
     RepoMetadata, DeploymentRecommendation, HealthBreakdown,
     ChecklistItem, AgentLog, AnalysisResult
@@ -118,6 +128,7 @@ def clone_and_scan_node(state: AnalyzerState) -> AnalyzerState:
         # Scan
         add_agent_log(task_id, "Repository Analyzer", "Repository cloned. Running heuristic file scanner...", "in_progress")
         metadata = HeuristicScanner.scan_repository(state['clone_path'])
+        metadata.repo_url = state['repository_url']
         
         state['metadata'] = metadata
         
@@ -130,6 +141,23 @@ def clone_and_scan_node(state: AnalyzerState) -> AnalyzerState:
         
     return state
 
+def build_repository_context_node(state: AnalyzerState) -> AnalyzerState:
+    if state.get('error'):
+        return state
+
+    task_id = state['task_id']
+    add_agent_log(task_id, "Planner Agent", "Building repository context for architecture reasoning...", "in_progress")
+    try:
+        state['repository_context'] = RepositoryContextBuilder.build(
+            state['metadata'], state['repo_name'], state['owner']
+        )
+        add_agent_log(task_id, "Planner Agent", "Repository context built successfully.", "completed")
+    except Exception as e:
+        state['error'] = str(e)
+        add_agent_log(task_id, "Planner Agent", f"Repository context build failed: {str(e)}", "failed")
+    return state
+
+
 def analyze_architecture_node(state: AnalyzerState) -> AnalyzerState:
     if state.get('error'):
         return state
@@ -137,19 +165,20 @@ def analyze_architecture_node(state: AnalyzerState) -> AnalyzerState:
     task_id = state['task_id']
     add_agent_log(task_id, "Infrastructure Agent", "Analyzing application architecture...", "in_progress")
     
-    # Simulate architecture mapping
-    # (In dynamic run, this analyzes frontend vs backend folder splits, package dependencies)
     metadata = state['metadata']
-    
-    arch_type = "Monolith"
-    if metadata.frontend and metadata.backend:
-        arch_type = "Fullstack (Frontend + Backend)"
-    elif metadata.frontend:
-        arch_type = "Static Frontend"
-    elif metadata.backend:
-        arch_type = "Backend Service/API"
-        
-    add_agent_log(task_id, "Infrastructure Agent", f"Architecture layout mapped: {arch_type}.", "completed")
+
+    technology_analysis = TechnologyAnalyzer.analyze(metadata)
+    architecture_analysis = ArchitectureAnalyzer.analyze(metadata)
+
+    state['technology_analysis'] = technology_analysis
+    state['architecture_analysis'] = architecture_analysis
+
+    add_agent_log(
+        task_id,
+        "Infrastructure Agent",
+        f"Technology stack detected: {technology_analysis.frontend_stack} / {technology_analysis.backend_stack}.",
+        "completed"
+    )
     return state
 
 def generate_recommendations_node(state: AnalyzerState) -> AnalyzerState:
@@ -160,48 +189,26 @@ def generate_recommendations_node(state: AnalyzerState) -> AnalyzerState:
     add_agent_log(task_id, "Infrastructure Agent", "Determining AWS deployment recommendations...", "in_progress")
     
     metadata = state['metadata']
-    
-    # 1. Determine recommended target
-    # - If terraform/cdk only, or serverless: AWS Lambda
-    # - If Dockerfile present + docker-compose or multi frameworks: AWS ECS
-    # - If static only (React, Vue, Svelte, static Next config without backend): AWS Amplify
-    # - Otherwise (Standard backend/frontend dockerized, Python/Node without docker): AWS App Runner
-    target = "AWS App Runner"
-    confidence = 80
-    
-    is_static = len(metadata.frontend) > 0 and len(metadata.backend) == 0
-    is_serverless = "serverless" in "".join(metadata.infrastructure_files).lower()
-    
-    if is_static:
-        target = "AWS Amplify"
-        confidence = 90
-    elif metadata.docker_compose:
-        target = "AWS ECS"
-        confidence = 85
-    elif is_serverless:
-        target = "AWS Lambda"
-        confidence = 88
-    else:
-        # Default container/managed runtime
-        target = "AWS App Runner"
-        if metadata.docker_readiness:
-            confidence = 95
-        else:
-            confidence = 80
-            
-    # 2. Cost Estimate
+
+    target, aws_recommendations, target_confidence = AWSDecisionEngine.evaluate(
+        metadata, state['technology_analysis']
+    )
+    state['aws_recommendations'] = aws_recommendations
+
     est_cost, cost_breakdown = CostEstimator.estimate_cost(target, metadata.databases)
-    
-    # 3. Write Recommendation placeholder (will enrich in next node or keep if heuristic)
     state['recommendation'] = DeploymentRecommendation(
         target=target,
-        why=generate_heuristic_recommendation(metadata, target),
+        why=aws_recommendations[0].reason if aws_recommendations else generate_heuristic_recommendation(metadata, target),
         estimated_monthly_cost=est_cost,
         cost_breakdown=cost_breakdown,
-        confidence_score=confidence
+        confidence_score=int(target_confidence)
     )
-    
-    add_agent_log(task_id, "Infrastructure Agent", f"Target determined: {target} (Confidence: {confidence}%).", "completed")
+    state['confidence'] = {
+        'deployment_target': f"{target_confidence:.1f}%",
+        'technology_detection': f"{state['technology_analysis'].detection_confidence.get('frontend_stack', 0)}%"
+    }
+
+    add_agent_log(task_id, "Infrastructure Agent", f"Target determined: {target} (Confidence: {target_confidence:.1f}%).", "completed")
     return state
 
 def assess_health_node(state: AnalyzerState) -> AnalyzerState:
@@ -369,7 +376,19 @@ def generate_ai_summary_node(state: AnalyzerState) -> AnalyzerState:
     # Fallback / No LLM configuration
     state['ai_summary'] = generate_heuristic_summary(metadata, rec.target, state['owner'], state['repo_name'])
     state['checklist'] = generate_heuristic_checklist(metadata, rec.target)
-    
+
+    state['reasoning'] = " ".join(ReasoningEngine.generate_reasons(metadata, rec.target))
+    state['architecture_report'] = ReportGenerator.build_report(
+        metadata, state['architecture_analysis'], state['aws_recommendations'] or []
+    )
+    state['visualization'] = ReportGenerator.build_visualization_graph(
+        metadata, state['architecture_analysis']
+    )
+    state['security_notes'] = "Review secrets handling and environment variable storage; use AWS Secrets Manager for production credentials."
+    state['performance_notes'] = "Use CDN-backed static delivery and managed autoscaling to ensure high availability and low latency."
+    state['cost_analysis'] = f"Estimated monthly cost is ${rec.estimated_monthly_cost:.2f} for the proposed deployment target."
+    state['deployment_strategy'] = f"Adopt {rec.target} with an IaC-driven CI/CD pipeline for repeatable deployments."
+
     add_agent_log(task_id, "Monitoring Agent", "AI deployment summary generated via heuristic engine.", "completed")
     return state
 
@@ -379,6 +398,7 @@ builder = StateGraph(AnalyzerState)
 
 # Add Nodes
 builder.add_node("clone_and_scan", clone_and_scan_node)
+builder.add_node("build_repository_context", build_repository_context_node)
 builder.add_node("analyze_architecture", analyze_architecture_node)
 builder.add_node("generate_recommendations", generate_recommendations_node)
 builder.add_node("assess_health", assess_health_node)
@@ -386,7 +406,8 @@ builder.add_node("generate_ai_summary", generate_ai_summary_node)
 
 # Set Flow
 builder.set_entry_point("clone_and_scan")
-builder.add_edge("clone_and_scan", "analyze_architecture")
+builder.add_edge("clone_and_scan", "build_repository_context")
+builder.add_edge("build_repository_context", "analyze_architecture")
 builder.add_edge("analyze_architecture", "generate_recommendations")
 builder.add_edge("generate_recommendations", "assess_health")
 builder.add_edge("assess_health", "generate_ai_summary")
@@ -453,8 +474,21 @@ def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[
             logs=[AgentLog(**log) for log in analysis_tasks[task_id].get("logs", [])]
         )
         
-        # Update datastore
-        analysis_tasks[task_id].update(result.model_dump())
+        task_data = analysis_tasks[task_id]
+        task_data.update(result.model_dump())
+        task_data['repository_context'] = final_state.get('repository_context')
+        task_data['technology_analysis'] = final_state.get('technology_analysis').model_dump() if final_state.get('technology_analysis') else None
+        task_data['architecture_analysis'] = final_state.get('architecture_analysis').model_dump() if final_state.get('architecture_analysis') else None
+        task_data['aws_recommendations'] = [rec.model_dump() for rec in final_state.get('aws_recommendations', [])] if final_state.get('aws_recommendations') else []
+        task_data['confidence'] = final_state.get('confidence')
+        task_data['reasoning'] = final_state.get('reasoning')
+        task_data['architecture_report'] = final_state.get('architecture_report')
+        task_data['visualization'] = final_state.get('visualization').model_dump() if final_state.get('visualization') else None
+        task_data['security_notes'] = final_state.get('security_notes')
+        task_data['performance_notes'] = final_state.get('performance_notes')
+        task_data['cost_analysis'] = final_state.get('cost_analysis')
+        task_data['deployment_strategy'] = final_state.get('deployment_strategy')
+        analysis_tasks[task_id] = task_data
         return analysis_tasks[task_id]
         
     except Exception as e:

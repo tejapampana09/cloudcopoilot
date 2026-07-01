@@ -1,5 +1,8 @@
+import logging
 import uvicorn
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
 
 # Load environmental variables from .env if present
 load_dotenv()

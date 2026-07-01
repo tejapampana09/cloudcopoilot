@@ -25,6 +25,7 @@ class RepoMetadata(BaseModel):
     ci_cd: List[str] = Field(default_factory=list)
     terraform: bool = False
     infrastructure_files: List[str] = Field(default_factory=list)
+    repo_url: Optional[HttpUrl] = None
     readme_quality: str = "Medium"
     license: str = "Unknown"
     build_commands: List[str] = Field(default_factory=list)
