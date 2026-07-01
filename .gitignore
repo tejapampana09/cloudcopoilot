@@ -1,21 +1,21 @@
 # CloudPilot AI files to ignore
-cloudpilot-ai/backend/venv/
-cloudpilot-ai/backend/temp/
-cloudpilot-ai/backend/downloads/
-cloudpilot-ai/backend/temp_clones/
-cloudpilot-ai/backend/__pycache__/
-cloudpilot-ai/backend/**/*.pyc
-cloudpilot-ai/backend/.env
-cloudpilot-ai/backend/app/cloudpilot.db
-cloudpilot-ai/backend/app/*.db
-cloudpilot-ai/cloudpilot-bugfixes/
+backend/venv/
+backend/temp/
+backend/downloads/
+backend/temp_clones/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.env
+backend/app/cloudpilot.db
+backend/app/*.db
+cloudpilot-bugfixes/
 
-cloudpilot-ai/frontend/node_modules/
-cloudpilot-ai/frontend/dist/
-cloudpilot-ai/frontend/build/
-cloudpilot-ai/frontend/.env
-cloudpilot-ai/frontend/.env.local
-cloudpilot-ai/frontend/*.log
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/*.log
 
 # Operating System files
 .DS_Store
