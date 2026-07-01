@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import datetime
 from typing import List, Dict, Any
@@ -288,7 +289,9 @@ def generate_ai_summary_node(state: AnalyzerState) -> AnalyzerState:
             llm = ChatOpenAI(
                 api_key=api_key,
                 model_name=settings.OPENAI_MODEL,
-                temperature=0.2
+                temperature=0.2,
+                request_timeout=30.0,
+                max_retries=2
             )
             
             # Formulate the payload data

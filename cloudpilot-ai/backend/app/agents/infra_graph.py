@@ -33,7 +33,9 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     llm = ChatOpenAI(
         api_key=settings.OPENAI_API_KEY,
         model_name=settings.OPENAI_MODEL,
-        temperature=0.2
+        temperature=0.2,
+        request_timeout=30.0,
+        max_retries=2
     )
     
     prompt = ChatPromptTemplate.from_messages([

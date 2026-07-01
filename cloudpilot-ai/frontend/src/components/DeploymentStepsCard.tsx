@@ -9,28 +9,28 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
   const steps = [
     {
       id: 1,
-      label: 'Analyze Repository',
-      status: status === 'completed' ? 'completed' : status === 'analyzing' ? 'in_progress' : 'pending'
+      label: 'Clone Repository',
+      status: status === 'completed' ? 'completed' : status === 'analyzing' ? 'completed' : 'pending'
     },
     {
       id: 2,
-      label: 'Build & Push Docker Image',
-      status: status === 'completed' ? 'completed' : 'pending'
+      label: 'Heuristic Framework Scan',
+      status: status === 'completed' ? 'completed' : status === 'analyzing' ? 'in_progress' : 'pending'
     },
     {
       id: 3,
-      label: 'Provision Infrastructure',
-      status: status === 'completed' ? 'in_progress' : 'pending'
+      label: 'AI Architecture Planning',
+      status: status === 'completed' ? 'completed' : 'pending'
     },
     {
       id: 4,
-      label: 'Deploy Application',
-      status: 'pending'
+      label: 'Cost & Health Auditing',
+      status: status === 'completed' ? 'completed' : 'pending'
     },
     {
       id: 5,
-      label: 'Setup Monitoring',
-      status: 'pending'
+      label: 'Checklist Blueprint Generation',
+      status: status === 'completed' ? 'completed' : 'pending'
     }
   ];
 
@@ -42,7 +42,7 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
           <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
-          Deployment Steps
+          Analysis Pipeline
         </h4>
         <span className="text-[10px] bg-slate-900 text-slate-400 font-bold px-2 py-0.5 rounded border border-slate-800 uppercase tracking-wider">
           Roadmap

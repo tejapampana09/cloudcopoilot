@@ -9,6 +9,8 @@ export const useAnalysisStream = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   const cleanup = useCallback(() => {
     if (eventSourceRef.current) {
@@ -81,7 +83,7 @@ export const useAnalysisStream = () => {
         console.error('EventSource connection error:', err);
         // Sometimes EventSource disconnects after finishing, which is normal.
         // But if it disconnects during analysis:
-        if (status === 'analyzing') {
+        if (statusRef.current === 'analyzing') {
           setError('Lost connection to analysis stream.');
           setStatus('failed');
         }
@@ -93,7 +95,7 @@ export const useAnalysisStream = () => {
       setStatus('failed');
       cleanup();
     }
-  }, [cleanup, status]);
+  }, [cleanup]);
 
   useEffect(() => {
     return () => cleanup();

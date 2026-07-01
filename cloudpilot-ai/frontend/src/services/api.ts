@@ -27,6 +27,14 @@ export const api = {
     return `${API_BASE_URL}/api/v1/analyze/stream/${taskId}`;
   },
 
+  getRecentAnalyses: async (): Promise<any[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/recent`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch recent analyses.');
+    }
+    return response.json();
+  },
+
   // AI Infrastructure Generator Endpoints
   generateInfrastructure: async (repoUrl: string): Promise<InfrastructureResponse> => {
     const payload = { repository_url: repoUrl };

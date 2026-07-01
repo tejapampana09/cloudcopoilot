@@ -2,10 +2,11 @@ import datetime
 from typing import Dict, Any, List
 from app.schemas.analyzer import AgentLog
 
-# In-memory datastore
-# Key: task_id, Value: AnalysisResult as dictionary
-analysis_tasks: Dict[str, Any] = {}
-infra_generations: Dict[str, Any] = {}
+from app.utils.database import SqliteDict
+
+# SQLite-backed persistent datastores
+analysis_tasks = SqliteDict("analyses", "task_id")
+infra_generations = SqliteDict("generations", "generation_id")
 
 def add_agent_log(task_id: str, agent: str, message: str, status: str) -> AgentLog:
     """
@@ -15,8 +16,9 @@ def add_agent_log(task_id: str, agent: str, message: str, status: str) -> AgentL
     log = AgentLog(agent=agent, message=message, timestamp=timestamp, status=status)
     
     if task_id in analysis_tasks:
+        task_data = analysis_tasks[task_id]
         # Get existing logs
-        logs = analysis_tasks[task_id].get("logs", [])
+        logs = task_data.get("logs", [])
         
         # Check if there's an existing log for this agent in progress/pending, we update it
         updated = False
@@ -29,7 +31,8 @@ def add_agent_log(task_id: str, agent: str, message: str, status: str) -> AgentL
         if not updated:
             logs.append(log.model_dump())
             
-        analysis_tasks[task_id]["logs"] = logs
+        task_data["logs"] = logs
+        analysis_tasks[task_id] = task_data
         
     return log
 
@@ -41,7 +44,8 @@ def add_infra_agent_log(generation_id: str, agent: str, message: str, status: st
     log = AgentLog(agent=agent, message=message, timestamp=timestamp, status=status)
     
     if generation_id in infra_generations:
-        logs = infra_generations[generation_id].get("logs", [])
+        gen_data = infra_generations[generation_id]
+        logs = gen_data.get("logs", [])
         
         # Check if there's an existing log for this agent in progress/pending, we update it
         updated = False
@@ -54,7 +58,8 @@ def add_infra_agent_log(generation_id: str, agent: str, message: str, status: st
         if not updated:
             logs.append(log.model_dump())
             
-        infra_generations[generation_id]["logs"] = logs
+        gen_data["logs"] = logs
+        infra_generations[generation_id] = gen_data
         
     return log
 

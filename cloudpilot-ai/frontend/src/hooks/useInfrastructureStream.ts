@@ -13,6 +13,8 @@ export const useInfrastructureStream = () => {
   const [detectedFramework, setDetectedFramework] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   const cleanup = useCallback(() => {
     if (eventSourceRef.current) {
@@ -87,7 +89,7 @@ export const useInfrastructureStream = () => {
       });
 
       es.onerror = () => {
-        if (status === 'generating') {
+        if (statusRef.current === 'generating') {
           setError('Lost connection to infrastructure stream.');
           setStatus('failed');
         }
@@ -99,7 +101,7 @@ export const useInfrastructureStream = () => {
       setStatus('failed');
       cleanup();
     }
-  }, [cleanup, status]);
+  }, [cleanup]);
 
   // Handle progress updates based on active logs
   useEffect(() => {

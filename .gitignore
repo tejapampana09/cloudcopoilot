@@ -6,6 +6,9 @@ cloudpilot-ai/backend/temp_clones/
 cloudpilot-ai/backend/__pycache__/
 cloudpilot-ai/backend/**/*.pyc
 cloudpilot-ai/backend/.env
+cloudpilot-ai/backend/app/cloudpilot.db
+cloudpilot-ai/backend/app/*.db
+cloudpilot-ai/cloudpilot-bugfixes/
 
 cloudpilot-ai/frontend/node_modules/
 cloudpilot-ai/frontend/dist/

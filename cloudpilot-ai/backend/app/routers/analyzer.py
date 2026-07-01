@@ -127,7 +127,7 @@ async def get_recent_analyses():
                 "owner": task.get("repository_owner") or "github",
                 "url": task.get("repository_url"),
                 "time": task.get("analysis_time") or datetime.datetime.now().isoformat(),
-                "status": "Running" if status == "completed" else "Failed",
+                "status": "Completed" if status == "completed" else "Failed",
                 "target": task.get("recommendation", {}).get("target", "AWS App Runner")
             })
     # Sort by time descending

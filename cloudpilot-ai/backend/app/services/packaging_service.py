@@ -5,6 +5,16 @@ from typing import Dict
 
 class PackagingService:
     @staticmethod
+    def redact_secrets(content: str) -> str:
+        """Defense-in-depth scanner to redact secret key patterns from LLM outputs."""
+        import re
+        # Redact OpenAI sk- keys
+        content = re.sub(r'sk-[a-zA-Z0-9]{48}', '[REDACTED_OPENAI_KEY]', content)
+        # Redact AWS Access Key IDs
+        content = re.sub(r'AKIA[0-9A-Z]{16}', '[REDACTED_AWS_KEY_ID]', content)
+        return content
+
+    @staticmethod
     def package_files(generation_id: str, generated_files: Dict[str, str], temp_dir_base: str, downloads_dir_base: str) -> str:
         """
         Writes files locally, packages them into a ZIP archive, cleans up staging,
@@ -17,12 +27,15 @@ class PackagingService:
         try:
             # 1. Write all generated files
             for rel_path, content in generated_files.items():
+                # Redact any accidentally output secret patterns
+                cleaned_content = PackagingService.redact_secrets(content)
+                
                 file_path = os.path.join(staging_path, rel_path)
                 # Create directories if needed
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 # Write file content
                 with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(content)
+                    f.write(cleaned_content)
 
             # Write static README deployment notes
             readme_path = os.path.join(staging_path, "deploy_notes.md")

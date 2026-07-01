@@ -52,33 +52,60 @@ class GitService:
         return owner, repo, clean_https_url
 
     @staticmethod
+    def get_directory_size_mb(path: str) -> float:
+        """Returns the total size of a directory in Megabytes."""
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    try:
+                        total_size += os.path.getsize(fp)
+                    except OSError:
+                        pass
+        return total_size / (1024 * 1024)
+
+    @staticmethod
     def clone_repository(repo_url: str, clone_path: str) -> None:
         """
         Performs a fast, shallow clone of a public GitHub repository.
+        Enforces a 30-second timeout and a 50MB file size limit.
         """
+        import subprocess
         try:
             # Validate URL
             owner, repo_name, clean_url = GitService.validate_and_parse_url(repo_url)
             
-            # Perform shallow clone
-            git.Repo.clone_from(
-                url=clean_url,
-                to_path=clone_path,
-                depth=1,
-                multi_options=["--single-branch"]
-            )
-        except git.exc.GitCommandError as e:
-            # Clean up the folder if it was partially created
-            GitService.cleanup_directory(clone_path)
+            # Ensure parent directories exist
+            os.makedirs(os.path.dirname(clone_path), exist_ok=True)
             
-            error_message = str(e)
-            if "Repository not found" in error_message or "Could not resolve host" in error_message:
-                raise GitServiceError("GitHub repository not found. Please verify the URL and ensure it is public.")
-            elif "Permission denied" in error_message or "terminal prompts disabled" in error_message:
-                raise GitServiceError("Access denied. The repository might be private or require authentication.")
-            else:
-                raise GitServiceError(f"Failed to clone repository: {e.stderr or error_message}")
+            # Perform shallow clone via subprocess with 30s timeout
+            result = subprocess.run(
+                ["git", "clone", "--depth", "1", "--single-branch", clean_url, clone_path],
+                capture_output=True,
+                text=True,
+                timeout=30.0
+            )
+            
+            if result.returncode != 0:
+                err = result.stderr.strip()
+                if "Repository not found" in err or "Could not resolve host" in err:
+                    raise GitServiceError("GitHub repository not found. Please verify the URL and ensure it is public.")
+                elif "Permission denied" in err or "terminal prompts disabled" in err:
+                    raise GitServiceError("Access denied. The repository might be private or require authentication.")
+                else:
+                    raise GitServiceError(f"Failed to clone repository: {err}")
+            
+            # Enforce 50MB maximum repository size limit
+            size_mb = GitService.get_directory_size_mb(clone_path)
+            if size_mb > 50.0:
+                raise GitServiceError(f"Repository exceeds the maximum allowed size of 50MB (cloned size: {size_mb:.1f}MB).")
+                
+        except subprocess.TimeoutExpired:
+            GitService.cleanup_directory(clone_path)
+            raise GitServiceError("Git clone operation timed out (limit: 30 seconds).")
         except GitServiceError:
+            GitService.cleanup_directory(clone_path)
             raise
         except Exception as e:
             GitService.cleanup_directory(clone_path)
