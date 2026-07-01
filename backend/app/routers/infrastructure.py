@@ -2,7 +2,7 @@ import os
 import uuid
 import json
 import asyncio
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -13,11 +13,17 @@ from app.services.git_service import GitService
 from app.services.scanner import HeuristicScanner
 from app.services.cost_estimator import CostEstimator
 from app.utils.helpers import infra_generations
+from app.routers.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
 @router.post("/generate", response_model=InfrastructureResponse, status_code=status.HTTP_202_ACCEPTED)
-async def generate_infrastructure(request: InfrastructureRequest, background_tasks: BackgroundTasks):
+async def generate_infrastructure(
+    request: InfrastructureRequest, 
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
     """
     Analyzes the repository and triggers the background infrastructure generation task.
     """
@@ -61,6 +67,7 @@ async def generate_infrastructure(request: InfrastructureRequest, background_tas
     
     # Initialize session database entry
     infra_generations[generation_id] = {
+        "user_id": current_user.id,
         "generation_id": generation_id,
         "status": "pending",
         "progress": 0,
@@ -91,7 +98,7 @@ async def generate_infrastructure(request: InfrastructureRequest, background_tas
     )
 
 @router.get("/stream/{generation_id}")
-async def stream_generation(generation_id: str):
+async def stream_generation(generation_id: str, current_user: User = Depends(get_current_user)):
     """
     Streams active agent logs and final generated files payload using Server-Sent Events (SSE).
     """
@@ -99,6 +106,14 @@ async def stream_generation(generation_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Generation session not found."
+        )
+        
+    # Verify owner permission
+    gen_data = infra_generations[generation_id]
+    if gen_data.get("user_id") != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. This session belongs to another user."
         )
         
     async def event_generator():
@@ -133,10 +148,24 @@ async def stream_generation(generation_id: str):
     return EventSourceResponse(event_generator())
 
 @router.get("/download/{generation_id}")
-async def download_infrastructure(generation_id: str):
+async def download_infrastructure(generation_id: str, current_user: User = Depends(get_current_user)):
     """
     Downloads the packaged ZIP configuration archive containing all generated infrastructure files.
     """
+    if generation_id not in infra_generations:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation session not found."
+        )
+        
+    # Verify owner permission
+    gen_data = infra_generations[generation_id]
+    if gen_data.get("user_id") != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. This session belongs to another user."
+        )
+        
     zip_filename = f"cloudpilot-infra-{generation_id}.zip"
     zip_path = os.path.join(DOWNLOADS_DIR, zip_filename)
     

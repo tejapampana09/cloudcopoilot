@@ -3,15 +3,26 @@ import { Bell, Sun } from 'lucide-react';
 
 interface HeaderProps {
   status: 'idle' | 'analyzing' | 'completed' | 'failed';
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ status }) => {
+export const Header: React.FC<HeaderProps> = ({ status, userEmail, onLogout }) => {
+  const getInitials = (email: string) => {
+    return email.split('@')[0].substring(0, 2).toUpperCase();
+  };
+
+  const getName = (email: string) => {
+    const name = email.split('@')[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
   return (
     <header className="flex justify-between items-center py-5 px-8 border-b border-slate-800/30 fixed top-0 right-0 left-64 z-10 glass-panel bg-slate-950/40">
       {/* Greetings */}
       <div>
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          Welcome back, Srikar! 👋
+          Welcome back, {userEmail ? getName(userEmail) : 'Guest'}! 👋
         </h2>
         <p className="text-xs text-slate-400 mt-1">
           Let's build something amazing today.
@@ -49,9 +60,19 @@ export const Header: React.FC<HeaderProps> = ({ status }) => {
           <Sun size={16} />
         </button>
 
-        {/* SR bubble */}
+        {/* Logout Button */}
+        {userEmail && onLogout && (
+          <button 
+            onClick={onLogout}
+            className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 text-rose-300 font-semibold text-xs transition-all cursor-pointer"
+          >
+            Logout
+          </button>
+        )}
+
+        {/* User bubble */}
         <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shadow-md border border-blue-400/20">
-          SR
+          {userEmail ? getInitials(userEmail) : 'GS'}
         </div>
       </div>
     </header>

@@ -1,32 +1,41 @@
 import os
-import sqlite3
 import json
 import collections.abc
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, declarative_base
+from app.core.config import settings
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cloudpilot.db")
+# Dummy DB_PATH to prevent import crashes in main.py
+DB_PATH = "postgresql"
+
+# Configure SQLAlchemy connection with SQLite fallback
+db_url = settings.DATABASE_URL
+is_sqlite = not db_url or "postgresql" not in db_url
+
+if is_sqlite:
+    DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cloudpilot.db")
+    db_url = f"sqlite:///{DB_FILE}"
+    engine = create_engine(
+        db_url,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(
+        db_url,
+        pool_size=20,
+        max_overflow=10,
+        pool_pre_ping=True
+    )
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 def init_db():
-    """Initializes SQLite database tables if they do not exist."""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS analyses (
-            task_id TEXT PRIMARY KEY,
-            data TEXT,
-            status TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS generations (
-            generation_id TEXT PRIMARY KEY,
-            data TEXT,
-            status TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    """Initializes PostgreSQL database tables if they do not exist."""
+    # Importing models here registers them on Base.metadata
+    from app.models.user import User
+    from app.models.analysis import Analysis, Generation
+    Base.metadata.create_all(bind=engine)
 
 class PersistentDict(dict):
     """A dictionary wrapper that hooks mutating operations and triggers a database write-back."""
@@ -56,85 +65,100 @@ class PersistentDict(dict):
         super().clear()
         self._db_dict.write_back(self._key, self)
 
-class SqliteDict(collections.abc.MutableMapping):
-    """A dictionary-like interface mapping read/write operations to SQLite tables."""
+class PostgresDict(collections.abc.MutableMapping):
+    """A dictionary-like interface mapping read/write operations to PostgreSQL tables."""
     def __init__(self, table_name, key_column):
         self.table_name = table_name
         self.key_column = key_column
         
-    def _connect(self):
-        return sqlite3.connect(DB_PATH)
-        
     def write_back(self, key, val_dict):
-        """Serializes and writes/updates data to SQLite."""
-        conn = self._connect()
-        cursor = conn.cursor()
-        data_str = json.dumps(val_dict)
-        status = val_dict.get("status", "pending")
-        cursor.execute(
-            f"INSERT OR REPLACE INTO {self.table_name} ({self.key_column}, data, status) VALUES (?, ?, ?)",
-            (key, data_str, status)
-        )
-        conn.commit()
-        conn.close()
+        """Serializes and writes/updates data to PostgreSQL."""
+        db = SessionLocal()
+        try:
+            data_str = json.dumps(val_dict)
+            status = val_dict.get("status", "pending")
+            user_id = val_dict.get("user_id")
+            # PostgreSQL upsert query: ON CONFLICT updates the data/status/user_id
+            db.execute(text(f"""
+                INSERT INTO {self.table_name} ({self.key_column}, data, status, user_id)
+                VALUES (:key, :data, :status, :user_id)
+                ON CONFLICT ({self.key_column})
+                DO UPDATE SET data = EXCLUDED.data, status = EXCLUDED.status, user_id = EXCLUDED.user_id
+            """), {"key": key, "data": data_str, "status": status, "user_id": user_id})
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            db.close()
         
     def __getitem__(self, key):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT data FROM {self.table_name} WHERE {self.key_column} = ?", (key,))
-        row = cursor.fetchone()
-        conn.close()
-        if not row:
-            raise KeyError(key)
-        # Return a proxy dict so nested updates trigger database changes
-        return PersistentDict(key, self, json.loads(row[0]))
+        db = SessionLocal()
+        try:
+            result = db.execute(text(f"SELECT data FROM {self.table_name} WHERE {self.key_column} = :key"), {"key": key}).fetchone()
+            if not result:
+                raise KeyError(key)
+            return PersistentDict(key, self, json.loads(result[0]))
+        finally:
+            db.close()
         
     def __setitem__(self, key, value):
         self.write_back(key, value)
         
     def __delitem__(self, key):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"DELETE FROM {self.table_name} WHERE {self.key_column} = ?", (key,))
-        conn.commit()
-        conn.close()
+        db = SessionLocal()
+        try:
+            db.execute(text(f"DELETE FROM {self.table_name} WHERE {self.key_column} = :key"), {"key": key})
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            db.close()
         
     def __iter__(self):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT {self.key_column} FROM {self.table_name}")
-        keys = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        return iter(keys)
+        db = SessionLocal()
+        try:
+            result = db.execute(text(f"SELECT {self.key_column} FROM {self.table_name}")).fetchall()
+            return iter([r[0] for r in result])
+        finally:
+            db.close()
         
     def __len__(self):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT COUNT(*) FROM {self.table_name}")
-        count = cursor.fetchone()[0]
-        conn.close()
-        return count
+        db = SessionLocal()
+        try:
+            count = db.execute(text(f"SELECT COUNT(*) FROM {self.table_name}")).scalar()
+            return count
+        finally:
+            db.close()
         
     def __contains__(self, key):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT 1 FROM {self.table_name} WHERE {self.key_column} = ?", (key,))
-        exists = cursor.fetchone() is not None
-        conn.close()
-        return exists
+        db = SessionLocal()
+        try:
+            result = db.execute(text(f"SELECT 1 FROM {self.table_name} WHERE {self.key_column} = :key"), {"key": key}).fetchone()
+            return result is not None
+        finally:
+            db.close()
         
     def items(self):
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT {self.key_column}, data FROM {self.table_name}")
-        rows = cursor.fetchall()
-        conn.close()
-        return [(r[0], json.loads(r[1])) for r in rows]
+        db = SessionLocal()
+        try:
+            rows = db.execute(text(f"SELECT {self.key_column}, data FROM {self.table_name}")).fetchall()
+            return [(r[0], json.loads(r[1])) for r in rows]
+        finally:
+            db.close()
         
     def clear_older_than_24h(self):
         """Deletes database entries older than 24 hours."""
-        conn = self._connect()
-        cursor = conn.cursor()
-        cursor.execute(f"DELETE FROM {self.table_name} WHERE created_at < datetime('now', '-24 hours')")
-        conn.commit()
-        conn.close()
+        db = SessionLocal()
+        try:
+            db.execute(text(f"DELETE FROM {self.table_name} WHERE created_at < NOW() - INTERVAL '24 hours'"))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            db.close()
+
+# Alias for backward compatibility
+SqliteDict = PostgresDict

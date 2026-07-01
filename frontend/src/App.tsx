@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { UrlInputCard } from './components/UrlInputCard';
@@ -15,18 +15,68 @@ import { InfrastructurePreview } from './components/InfrastructurePreview';
 import { ValidationReportCard } from './components/ValidationReportCard';
 import { useAnalysisStream } from './hooks/useAnalysisStream';
 import { useInfrastructureStream } from './hooks/useInfrastructureStream';
-import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
+import { RefreshCw, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Login } from './components/Login';
+import { api } from './services/api';
 
 function App() {
   const { status, logs, result, error, startAnalysis, reset } = useAnalysisStream();
   const [viewMode, setViewMode] = useState<'analyzer' | 'infrastructure'>('analyzer');
   const infra = useInfrastructureStream();
 
+  const [authenticated, setAuthenticated] = useState<boolean>(api.isAuthenticated());
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(api.isAuthenticated());
+
+  useEffect(() => {
+    const checkUser = async () => {
+      if (api.isAuthenticated()) {
+        try {
+          const user = await api.getMe();
+          setCurrentUser(user);
+          setAuthenticated(true);
+        } catch (err) {
+          setAuthenticated(false);
+          api.clearToken();
+        } finally {
+          setCheckingAuth(false);
+        }
+      } else {
+        setCheckingAuth(false);
+      }
+    };
+    checkUser();
+  }, [authenticated]);
+
+  const handleLoginSuccess = () => {
+    setAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    api.clearToken();
+    setAuthenticated(false);
+    setCurrentUser(null);
+    handleResetAll();
+  };
+
   const handleResetAll = () => {
     reset();
     infra.reset();
     setViewMode('analyzer');
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-[#080C14] text-slate-100 flex items-center justify-center gap-2">
+        <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+        <span className="text-sm font-semibold text-slate-400">Verifying session...</span>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#080C14] text-slate-100 flex">
@@ -36,7 +86,11 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 pl-64 flex flex-col min-h-screen">
         {/* Header - sync with active node status */}
-        <Header status={viewMode === 'infrastructure' ? (infra.status === 'generating' ? 'analyzing' : infra.status) : status} />
+        <Header 
+          status={viewMode === 'infrastructure' ? (infra.status === 'generating' ? 'analyzing' : infra.status) : status} 
+          userEmail={currentUser?.email}
+          onLogout={handleLogout}
+        />
 
         {/* Inner Scrollable Workspace */}
         <main className="flex-1 mt-[80px] p-8 overflow-y-auto space-y-8 max-w-7xl w-full mx-auto">

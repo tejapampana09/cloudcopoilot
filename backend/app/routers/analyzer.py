@@ -3,7 +3,7 @@ import os
 import json
 import asyncio
 import datetime
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
 from sse_starlette.sse import EventSourceResponse
 
 from app.core.config import settings
@@ -11,11 +11,17 @@ from app.schemas.analyzer import AnalyzeRequest, AnalyzeResponse
 from app.agents.graph import run_analysis_pipeline
 from app.utils.helpers import analysis_tasks
 from app.services.git_service import GitService
+from app.routers.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
 @router.post("/analyze", response_model=AnalyzeResponse, status_code=status.HTTP_202_ACCEPTED)
-async def analyze_repository(request: AnalyzeRequest, background_tasks: BackgroundTasks):
+async def analyze_repository(
+    request: AnalyzeRequest, 
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
     """
     Triggers an asynchronous code analysis of the provided public GitHub repository.
     """
@@ -34,6 +40,7 @@ async def analyze_repository(request: AnalyzeRequest, background_tasks: Backgrou
     
     # Initialize task data
     analysis_tasks[task_id] = {
+        "user_id": current_user.id,
         "repository_url": request.repository_url,
         "repository_name": "",
         "repository_owner": "",
@@ -69,7 +76,7 @@ async def analyze_repository(request: AnalyzeRequest, background_tasks: Backgrou
     return AnalyzeResponse(task_id=task_id, status="pending")
 
 @router.get("/analyze/stream/{task_id}")
-async def stream_analysis(task_id: str):
+async def stream_analysis(task_id: str, current_user: User = Depends(get_current_user)):
     """
     Streams analysis agent logs and final analysis payload via Server-Sent Events (SSE).
     """
@@ -77,6 +84,14 @@ async def stream_analysis(task_id: str):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task ID not found."
+        )
+        
+    # Verify owner permission
+    task_data = analysis_tasks[task_id]
+    if task_data.get("user_id") != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. This scan belongs to another user."
         )
         
     async def event_generator():
@@ -112,25 +127,25 @@ async def stream_analysis(task_id: str):
     return EventSourceResponse(event_generator())
 
 @router.get("/recent")
-async def get_recent_analyses():
+async def get_recent_analyses(current_user: User = Depends(get_current_user)):
     """
-    Returns the list of recently completed repository analyses.
+    Returns the list of recently completed repository analyses for the current user.
     """
     recent = []
     for task_id, task in analysis_tasks.items():
-        # Get details
-        status = task.get("status")
-        if status in ["completed", "failed"]:
-            recent.append({
-                "task_id": task_id,
-                "name": task.get("repository_name") or task.get("repository_url").split("/")[-1].replace(".git", ""),
-                "owner": task.get("repository_owner") or "github",
-                "url": task.get("repository_url"),
-                "time": task.get("analysis_time") or datetime.datetime.now().isoformat(),
-                "status": "Completed" if status == "completed" else "Failed",
-                "target": task.get("recommendation", {}).get("target", "AWS App Runner")
-            })
+        if task.get("user_id") == current_user.id:
+            status = task.get("status")
+            if status in ["completed", "failed"]:
+                recent.append({
+                    "task_id": task_id,
+                    "name": task.get("repository_name") or task.get("repository_url").split("/")[-1].replace(".git", ""),
+                    "owner": task.get("repository_owner") or "github",
+                    "url": task.get("repository_url"),
+                    "time": task.get("analysis_time") or datetime.datetime.now().isoformat(),
+                    "status": "Completed" if status == "completed" else "Failed",
+                    "target": task.get("recommendation", {}).get("target", "AWS App Runner")
+                })
     # Sort by time descending
     recent.sort(key=lambda x: x["time"], reverse=True)
-    return recent[:5]
+    return recent[:10]
 

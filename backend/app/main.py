@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from app.core.config import settings
-from app.routers import analyzer, infrastructure
-from app.utils.database import init_db, DB_PATH
+from app.routers import analyzer, infrastructure, auth
+from app.utils.database import init_db
 from app.utils.rate_limiter import RateLimitMiddleware
 
 app = FastAPI(
@@ -20,7 +20,12 @@ def on_startup():
 # Restrict CORS origins: browsers reject allow_origins=["*"] when allow_credentials=True
 origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
 if "*" in origins:
-    origins = ["http://localhost:5173", "http://localhost:3000"]
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,6 +39,12 @@ app.add_middleware(
 app.add_middleware(RateLimitMiddleware, requests_per_minute=40)
 
 # Mount routers
+app.include_router(
+    auth.router,
+    prefix=settings.API_V1_STR,
+    tags=["auth"]
+)
+
 app.include_router(
     analyzer.router,
     prefix=settings.API_V1_STR,
@@ -57,18 +68,17 @@ async def health():
     
     db_healthy = False
     try:
-        import sqlite3
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.fetchone()
-        conn.close()
+        from app.utils.database import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
         db_healthy = True
     except Exception:
         pass
 
     if not db_healthy:
-        return {"status": "unhealthy", "reason": "Database connection failed."}
+        return {"status": "unhealthy", "reason": "PostgreSQL database connection failed."}
 
     return {
         "status": "healthy",
