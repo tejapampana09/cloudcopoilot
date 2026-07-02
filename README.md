@@ -1,8 +1,28 @@
-# CloudPilot AI – Phase 1: Repository Analyzer
+# CloudCopilot AI – AI GitHub Repository Assistant
 
-CloudPilot AI is a repository analysis platform with AI-assisted deployment recommendations and heuristic cloud planning. It inspects any public GitHub repository and designs an optimized deployment target recommendation, monthly AWS cost estimate, cloud readiness score, and a verification checklist.
+CloudCopilot AI is a production-ready **AI GitHub Repository Assistant** (AI GitHub Engineer) that inspects public GitHub repositories, builds a semantic vector index for RAG queries, audits code quality, scans for security and performance vulnerabilities, and auto-generates developer documentations and deployment blueprints.
 
-This repository represents **Phase 1: Repository Analyzer** built using FastAPI, React 19, Tailwind CSS v4, and LangGraph.
+Built using **FastAPI (Python)**, **React 19 / TypeScript**, **Tailwind CSS v4**, and **LangGraph**.
+
+---
+
+## Core Capabilities
+
+1. **Semantic Codebase Indexing (RAG)**:
+   - Clones repositories and parses files using an optimized traversal engine (skips `node_modules`, `.git`, `.venv` directories in place for fast scans).
+   - Generates embeddings using `OpenAIEmbeddings` (fully integrated with both standard OpenAI and OpenRouter `sk-or-` APIs).
+   - Performs local cosine similarity vector matching in Python, allowing full conversational RAG capabilities over your code context.
+2. **Bug Detection & Fix Suggestions**:
+   - Audits logic bugs, missing validations, async execution patterns, and duplicate code blocks.
+   - Outputs the Problem, Impact, Affected files, Suggested solution, and Syntax-highlighted example fix code.
+3. **Security Vulnerability Scanner**:
+   - Inspects files for hardcoded secrets/credentials, weak JWT token structures, SQL Injection risks, XSS flaws, and CORS wildcard vulnerabilities.
+4. **Performance Auditor**:
+   - Identifies oversized components, heavy/bloated dependencies, slow APIs, and concurrency locks (such as SQLite write bottlenecks).
+5. **Auto-Generated Technical Documentation**:
+   - Generates production-ready markdown templates: `README.md`, System Architecture, Folder Guides, REST API Reference, setup scripts, and dev guidelines.
+6. **Deployment Guide Generator**:
+   - Detects the project framework, recommends a cloud hosting target (e.g. AWS App Runner, ECS, Lambda, Amplify), details build commands, outlines environment configuration templates, and lists required secrets.
 
 ---
 
@@ -10,26 +30,25 @@ This repository represents **Phase 1: Repository Analyzer** built using FastAPI,
 
 ```text
 cloudpilot-ai/
-├── backend/            # FastAPI Python server
+├── backend/            # FastAPI Python Server
 │   ├── app/            # Core backend app package
-│   │   ├── core/       # Configuration Settings
+│   │   ├── core/       # Configuration Settings (OpenRouter auto-detection)
 │   │   ├── schemas/    # Pydantic schemas (Request/Response contracts)
-│   │   ├── services/   # Git cloning, heuristic scanning & cost estimation
-│   │   ├── agents/     # LangGraph workflow & states
-│   │   └── routers/    # POST/stream endpoints
-│   ├── temp_clones/    # Temporary workspace cloning location (auto-purged)
+│   │   ├── models/     # SQLAlchemy schemas (Repository chunks, Users)
+│   │   ├── services/   # Semantic indexing, Git helper, Cost estimators
+│   │   ├── agents/     # 12-Agent LangGraph Orchestrator pipeline
+│   │   └── routers/    # API endpoints (Auth, Analyzer, SSE Streams)
 │   ├── requirements.txt
 │   └── run.py          # Uvicorn startup entrypoint
-├── frontend/           # React 19 / Vite TS frontend SPA
+├── frontend/           # React 19 / Vite TS Frontend SPA
 │   ├── src/
-│   │   ├── components/ # Premium dashboard widgets
-│   │   ├── hooks/      # SSE EventSource hooks
-│   │   ├── services/   # API abstraction layer
-│   │   └── index.css   # Tailwind v4 imports & Glassmorphism styles
-│   ├── vite.config.ts
+│   │   ├── components/ # Premium light gradient widgets & chats
+│   │   ├── hooks/      # SSE EventSource hook
+│   │   ├── services/   # API client helper
+│   │   └── index.css   # Light Gradient Theme & Glassmorphism styles
 │   └── package.json
 └── shared/
-    └── types.ts        # Common TypeScript interfaces
+    └── types.ts        # Shared TypeScript interfaces
 ```
 
 ---
@@ -61,12 +80,12 @@ cloudpilot-ai/
 ### Configuration
 Create a `.env` file in the `backend/` directory:
 ```env
-# Optional: Add your OpenAI API Key to enrich summary justifications and checklist logs via GPT-4o-mini
-OPENAI_API_KEY=your_openai_api_key_here
+# Add your OpenAI or OpenRouter key to run indexing and completions
+OPENAI_API_KEY=your_key_here
 ```
 
 ### Running Locally
-To launch the backend local dev server on `http://localhost:8000`:
+To launch the backend API server on `http://localhost:8000`:
 ```bash
 python run.py
 ```
@@ -100,25 +119,6 @@ npm run dev
 ## Running End-to-End Analysis
 1. Ensure both the backend and frontend are running.
 2. Open your browser to `http://localhost:5173`.
-3. Paste a public GitHub URL (e.g., `https://github.com/fastapi/fastapi` or `https://github.com/facebook/react`).
-4. Click **Analyze Repository** to observe the real-time agent workflow logs and final AWS deployment recommendations.
-
-## Current Limitations
-- Phase 1 focuses on repository analysis, heuristics, and deployment recommendations, not on production-grade infrastructure orchestration.
-- The AI guidance is based on heuristics and repository metadata; it may not cover every custom build or cloud pattern.
-- Authentication, secrets scanning, and public deployment hardening are intentionally limited in this phase.
-
-## Roadmap
-- Add robust production deployment tips, integration tests, and CI/CD generation.
-- Improve infrastructure recommendations with real AWS service matching and cost profiling.
-- Add observability, error tracking, and better user session validation.
-
-## Known Issues
-- SSE streams may drop if the backend token is not provided correctly in the query string.
-- Some repository scans may miss non-standard project layouts or custom build scripts.
-- OpenAI model configuration is optional, and feature quality depends on API availability.
-
-## Architecture
-- `backend/` contains the FastAPI service, scan workflow, and SSE streaming endpoints.
-- `frontend/` contains the React 19 + Vite SPA, SSE client hooks, and cost/analysis dashboard.
-- `shared/` contains common TypeScript interfaces.
+3. Paste a public GitHub URL (e.g., `https://github.com/fastapi/fastapi` or `https://github.com/expressjs/express`).
+4. Click **Scan Repository** to observe the real-time agent activity logs and orchestrator pipeline.
+5. Once completed, explore the circular quality scores, Recharts charts, bug fix guides, documentations, and query the **AI Consultant Stream** to chat directly with your codebase.
