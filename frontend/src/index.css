@@ -3,19 +3,32 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Premium Palette */
   --color-aws-orange: #FF9900;
   --color-aws-orange-hover: #E08800;
+  
+  --color-brand-blue: #3b82f6;
+  --color-brand-cyan: #06b6d4;
+  --color-brand-emerald: #10b981;
+  --color-brand-violet: #8b5cf6;
+  --color-brand-rose: #f43f5e;
+  --color-brand-amber: #f59e0b;
+  
+  --color-bg-dark: #080c14;
+  --color-border-premium: rgba(255, 255, 255, 0.05);
+  --color-border-premium-hover: rgba(255, 255, 255, 0.12);
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #080C14; /* Deep premium slate-black background */
-  color: #F3F4F6;
+  background-color: var(--color-bg-dark);
+  color: #f3f4f6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Design */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -24,37 +37,43 @@ body {
   background: rgba(8, 12, 20, 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
 }
 
-/* Glassmorphism custom classes */
+/* Premium Design Utilities */
 .glass-panel {
-  background: rgba(16, 22, 35, 0.65);
+  background: rgba(16, 22, 35, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-premium);
 }
 
-.glass-panel-hover {
+.glass-card {
+  background: rgba(16, 22, 35, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border-premium);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.glass-panel-hover:hover {
-  background: rgba(16, 22, 35, 0.85);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.7);
+
+.glass-card-hover:hover {
+  background: rgba(16, 22, 35, 0.8);
+  border-color: var(--color-border-premium-hover);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
   transform: translateY(-2px);
 }
 
 .glass-card-selected {
-  background: rgba(16, 22, 35, 0.9);
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 0 20px -5px rgba(59, 130, 246, 0.15);
+  background: rgba(16, 22, 35, 0.85);
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 24px -6px rgba(59, 130, 246, 0.2);
 }
 
+/* Standard Premium Inputs */
 .glass-input {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -68,16 +87,55 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-/* Glow effects */
+/* Premium Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px -5px rgba(59, 130, 246, 0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px -5px rgba(59, 130, 246, 0.5);
+  filter: brightness(1.08);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+/* Micro Glowing Shadows */
 .glow-emerald {
-  box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 40px -10px rgba(16, 185, 129, 0.12);
 }
 .glow-cyan {
-  box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.15);
+  box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.12);
 }
 .glow-blue {
-  box-shadow: 0 0 40px -10px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 40px -10px rgba(59, 130, 246, 0.12);
 }
 .glow-orange {
-  box-shadow: 0 0 40px -10px rgba(255, 153, 0, 0.15);
+  box-shadow: 0 0 40px -10px rgba(255, 153, 0, 0.12);
+}
+
+/* Micro-animations */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.05); }
+}
+.animate-pulse-glow {
+  animation: pulseGlow 4s infinite ease-in-out;
 }

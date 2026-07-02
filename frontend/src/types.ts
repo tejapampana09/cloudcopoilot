@@ -74,6 +74,7 @@ export interface AnalysisResult {
   ai_summary: string;
   logs: AgentLog[];
   error?: string;
+  cost_analysis?: string;
 }
 
 export interface AnalyzeRequest {
