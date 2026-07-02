@@ -6,14 +6,18 @@ All notable changes to the CloudPilot platform will be documented in this file.
 
 ## [2.0.0-beta] - 2026-07-02
 ### Added
-- **UI/UX Design System & Layout**: Styled [index.css](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/index.css) design tokens, glowing components, and responsive panels.
+- **Phase 2 Repository Intelligence Audit**: Integrated secret detection (AWS Keys, JWT secrets, credentials), large files checks (>500 lines), circular dependencies, and git remote branch release tags checks inside [scanner.py](file:///c:/Users/ss/Desktop/New%20folder/backend/app/services/scanner.py).
+- **Phase 3 Multi-Agent AI Orchestration**: Restructured [graph.py](file:///c:/Users/ss/Desktop/New%20folder/backend/app/agents/graph.py) to run the 8 specialized agents in cooperative sequence: Repository Agent -> Architecture Agent -> Security Agent -> Performance Agent -> Cloud Architect Agent -> AWS Cost Agent -> DevOps Agent -> Executive Summary Agent.
+- **Specialized Report Serialization**: Configured graph state outputs to populate and serialize Repository Report, Architecture Report, Security Report, Performance Report, Cloud Report, Cost Report, DevOps Report, Executive Summary, Overall Repository Score, and Overall Cloud Readiness Score.
+- **UI Tab Integration**: Added DevOps tab and mapped Overall Quality score rings and Priority Fixes / Cloud Action Plan lists inside the Reports Overview panel.
+- **UI/UX Design System & Layout**: Styled [index.css](file:///c:/Users/ss/Desktop/New%2520folder/frontend/src/index.css) design tokens, glowing components, and responsive panels.
 - **Premium Sidebar Navigation**: Implemented compact collapse mode, project Workspace Switcher dropdown, and a Command+K search bar.
 - **Dashboard Redesign Hero**: Added greetings hero panel ("Good Morning, Srikar Reddy"), operational status monitors, repository scanner input, and SaaS metrics insights.
-- **Tabbed Reports Panel**: Organized reports page into sub-tabs (Overview, Architecture, Security, Performance, AWS Topology, Cost Analyzer, IaC Deployment).
+- **Tabbed Reports Panel**: Organized reports page into sub-tabs (Overview, Architecture, Security, Performance, AWS Topology, Cost Analyzer, DevOps, IaC Deployment).
 - **Responsive SVG Charts**: Integrated SVG cost segment donut charts and compute host comparison bar charts.
-- **Agent Orchestration Timeline**: Redesigned [DeploymentStepsCard.tsx](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/components/DeploymentStepsCard.tsx) to resolve dynamic execution statuses (Repository Agent, Architecture Agent, Security Agent, Cloud Agent, Executive Report) from streamed logs.
+- **Agent Orchestration Timeline**: Redesigned [DeploymentStepsCard.tsx](file:///c:/Users/ss/Desktop/New%2520folder/frontend/src/components/DeploymentStepsCard.tsx) to resolve dynamic execution statuses from streamed logs.
 - **Git Analytics Engine**: Sub-process log audits evaluating commit sizes, author count, complexity mapping (Low/Medium/High), and dynamic Technical Debt scores.
-- **Ask CloudCopilot RAG Chat**: Implemented [AIConsultantChat.tsx](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/components/AIConsultantChat.tsx) with a left actions column to trigger direct codebase evaluations (explain architecture, reduce cost, analyze database scaling, security scoring, custom Terraform) calling the `/chat` RAG POST endpoint.
+- **Ask CloudCopilot RAG Chat**: Implemented [AIConsultantChat.tsx](file:///c:/Users/ss/Desktop/New%2520folder/frontend/src/components/AIConsultantChat.tsx) with a left actions column to trigger direct codebase evaluations (explain architecture, reduce cost, analyze database scaling, security scoring, custom Terraform) calling the `/chat` RAG POST endpoint.
 - **Directory Cleanups daemon**: Spawns background thread worker on server start that automatically prunes temp_clones directories older than 1 hour.
 - **Pytest config**: Added `pytest.ini` ignoring temporary clone folders to ensure clean unit test collections.
 
