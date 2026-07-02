@@ -182,7 +182,7 @@ def architecture_agent_node(state: AnalyzerState) -> AnalyzerState:
 
         # Architecture report compile
         state['architecture_report'] = {
-            "layers": architecture_analysis.layers if architecture_analysis else ["Application Layer", "Data Access Layer"],
+            "layers": getattr(architecture_analysis, "layers", ["Application Layer", "Data Access Layer"]),
             "services": state['metadata'].backend + state['metadata'].frontend,
             "databases": state['metadata'].databases,
             "boundaries": f"Architecture is structured around {state['technology_analysis'].backend_stack if state['technology_analysis'] else 'decoupled'} patterns.",
@@ -462,14 +462,40 @@ def cost_optimization_agent_node(state: AnalyzerState) -> AnalyzerState:
     task_id = state['task_id']
     add_agent_log(task_id, "Deployment Agent", "Activating Cost Optimization Agent...", "in_progress")
     try:
-        monthly_cost = state['cost_report'].get('monthly_estimation', 35.86) if state.get('cost_report') else 35.86
+        rec = state['recommendation']
+        complexity = state['repository_context'].project_complexity if state.get('repository_context') else 'Medium'
+        
+        est_cost, cost_breakdown = CostEstimator.estimate_cost(rec.target, state['metadata'].databases, complexity)
+        rec.estimated_monthly_cost = est_cost
+        rec.cost_breakdown = cost_breakdown
+        state['recommendation'] = rec
+        
+        assumptions_str = CostEstimator.generate_assumptions_text(
+            rec.target, state['metadata'].databases, complexity, est_cost, cost_breakdown
+        )
+        state['cost_analysis'] = assumptions_str
+        
+        state['cost_report'] = {
+            "monthly_estimation": est_cost,
+            "breakdown": {
+                "compute": cost_breakdown.compute,
+                "database": cost_breakdown.database,
+                "storage": cost_breakdown.storage,
+                "transfer": cost_breakdown.data_transfer
+            },
+            "optimization_opportunities": [
+                "Map spot containers on non-production ECS tasks",
+                "Store static assets directly on S3 CDN boundaries"
+            ]
+        }
+        
         state['cost_optimization_report'] = {
             "monthly_waste": 0.0,
             "savings_opportunities": [
                 "Map spot compute configurations for non-prod traffic",
                 "Apply auto-scaling scale-in thresholds during off-hours"
             ],
-            "potential_savings": float(monthly_cost) * 0.35
+            "potential_savings": float(est_cost) * 0.35
         }
         add_agent_log(task_id, "Deployment Agent", "Cost optimization options mapped by Cost Optimization Agent.", "completed")
     except Exception as e:

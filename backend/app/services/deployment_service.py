@@ -159,6 +159,12 @@ output "service_url" {
 
         add_deployment_log(deployment_id, "Preparing", "Workspace directory configured.", "completed")
 
+        # Manually inject venv/Scripts to OS PATH so python subprocess can find local terraform.exe
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        venv_scripts = os.path.join(base_dir, "venv", "Scripts")
+        if os.path.exists(venv_scripts):
+            os.environ["PATH"] = venv_scripts + os.pathsep + os.environ["PATH"]
+
         # Check if terraform is installed in system path
         has_terraform = shutil.which("terraform") is not None
         
@@ -188,24 +194,15 @@ output "service_url" {
         else:
             try:
                 # 2. Terraform Init
-                add_deployment_log(deployment_id, "Initializing Terraform", "Running terraform init command...", "in_progress")
-                proc = subprocess.run(["terraform", "init"], cwd=workspace_dir, capture_output=True, text=True)
-                if proc.returncode != 0:
-                    raise Exception(f"Terraform init failed: {proc.stderr}")
-                add_deployment_log(deployment_id, "Initializing Terraform", "Terraform modules initialized.", "completed")
+                DeploymentService._run_terraform_command(deployment_id, "Initializing Terraform", ["terraform", "init"], workspace_dir)
+                add_deployment_log(deployment_id, "Initializing Terraform", "Terraform modules initialized successfully.", "completed")
 
                 # 3. Terraform Plan
-                add_deployment_log(deployment_id, "Planning", "Running terraform plan...", "in_progress")
-                proc = subprocess.run(["terraform", "plan"], cwd=workspace_dir, capture_output=True, text=True)
-                if proc.returncode != 0:
-                    raise Exception(f"Terraform plan failed: {proc.stderr}")
+                DeploymentService._run_terraform_command(deployment_id, "Planning", ["terraform", "plan"], workspace_dir)
                 add_deployment_log(deployment_id, "Planning", "Terraform plan calculated.", "completed")
 
                 # 4. Terraform Apply
-                add_deployment_log(deployment_id, "Creating Infrastructure", "Running terraform apply...", "in_progress")
-                proc = subprocess.run(["terraform", "apply", "-auto-approve"], cwd=workspace_dir, capture_output=True, text=True)
-                if proc.returncode != 0:
-                    raise Exception(f"Terraform apply failed: {proc.stderr}")
+                DeploymentService._run_terraform_command(deployment_id, "Creating Infrastructure", ["terraform", "apply", "-auto-approve"], workspace_dir)
                 add_deployment_log(deployment_id, "Creating Infrastructure", "Terraform resources created.", "completed")
 
                 # 5. Deploying Application
@@ -250,6 +247,32 @@ output "service_url" {
         deployments[deployment_id] = dep_data
 
     @staticmethod
+    def _run_terraform_command(deployment_id: str, stage: str, command: list, cwd: str) -> None:
+        """Executes a terraform command and streams stdout/stderr outputs to database logs in real time."""
+        add_deployment_log(deployment_id, stage, f"Executing: {' '.join(command)}", "in_progress")
+        try:
+            proc = subprocess.Popen(
+                command,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                creationflags=0x08000000 # CREATE_NO_WINDOW on Windows to prevent console popup
+            )
+            
+            for line in proc.stdout:
+                clean_line = line.strip()
+                if clean_line:
+                    add_deployment_log(deployment_id, stage, clean_line, "in_progress")
+                    
+            proc.wait()
+            if proc.returncode != 0:
+                raise Exception(f"Command {' '.join(command)} failed with exit status {proc.returncode}")
+        except Exception as e:
+            raise Exception(f"Subprocess run failed: {str(e)}")
+
+    @staticmethod
     def start_destroy(deployment_id: str) -> None:
         """Triggers background destroy execution worker."""
         dep_data = deployments.get(deployment_id)
@@ -269,6 +292,13 @@ output "service_url" {
     @staticmethod
     def _execute_destroy_worker(deployment_id: str) -> None:
         workspace_dir = os.path.join(settings.TEMP_CLONE_DIR, f"deploy_{deployment_id}")
+        
+        # Manually inject venv/Scripts to OS PATH so python subprocess can find local terraform.exe
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        venv_scripts = os.path.join(base_dir, "venv", "Scripts")
+        if os.path.exists(venv_scripts):
+            os.environ["PATH"] = venv_scripts + os.pathsep + os.environ["PATH"]
+
         has_terraform = shutil.which("terraform") is not None
         
         add_deployment_log(deployment_id, "Destroying", "Decommissioning App Runner compute service...", "in_progress")
@@ -276,7 +306,7 @@ output "service_url" {
 
         if has_terraform and os.path.exists(workspace_dir):
             try:
-                subprocess.run(["terraform", "destroy", "-auto-approve"], cwd=workspace_dir)
+                DeploymentService._run_terraform_command(deployment_id, "Destroying", ["terraform", "destroy", "-auto-approve"], workspace_dir)
             except Exception:
                 pass
             shutil.rmtree(workspace_dir, ignore_errors=True)
