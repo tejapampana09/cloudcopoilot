@@ -4,6 +4,19 @@ All notable changes to the CloudPilot platform will be documented in this file.
 
 ---
 
+## [2.0.0-beta] - 2026-07-02
+### Added
+- **UI/UX Design System & Layout**: Styled [index.css](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/index.css) design tokens, gowing components, responsive page panels, collapsible sidebar tabs router, and real-time execution Timeline.
+- **Git Analytics Engine**: Sub-process log audits evaluating commit sizes, author count, complexity mapping (Low/Medium/High), and dynamic Technical Debt scores.
+- **AI Technical Consultant**: Conversation chatbot in the UI calling real backend `/chat` RAG POST endpoint. Performs context-matched keyword file walk inside codebase and answers queries using OpenAI.
+- **Directory Cleanups daemon**: Spawns background thread worker on server start that automatically prunes temp_clones directories older than 1 hour.
+- **Pytest config**: Added `pytest.ini` ignoring temporary clone folders to ensure clean unit test collections.
+
+### Fixed
+- **LangChain ValueError braces crash**: Patched the `call_llm` human prompt in `infra_graph.py` to route contents as variables, preventing parse failures on codebase curly braces.
+
+---
+
 ## [1.1.0] - 2026-07-02
 ### Added
 - **Dynamic Weighted Decision Matrix**: Scores compute platforms (Amplify, App Runner, ECS, Lambda) dynamically using weights customized to technology profiles.
