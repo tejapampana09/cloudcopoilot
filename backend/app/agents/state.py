@@ -37,3 +37,7 @@ class AnalyzerState(TypedDict, total=False):
     executive_summary: Optional[Dict[str, Any]]
     overall_repository_score: Optional[int]
     overall_cloud_readiness_score: Optional[int]
+    infrastructure_report: Optional[Dict[str, Any]]
+    deploy_report: Optional[Dict[str, Any]]
+    monitoring_report: Optional[Dict[str, Any]]
+    cost_optimization_report: Optional[Dict[str, Any]]

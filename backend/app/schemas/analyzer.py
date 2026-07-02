@@ -97,3 +97,7 @@ class AnalysisResult(BaseModel):
     executive_summary: Optional[Dict[str, Any]] = None
     overall_repository_score: Optional[int] = None
     overall_cloud_readiness_score: Optional[int] = None
+    infrastructure_report: Optional[Dict[str, Any]] = None
+    deploy_report: Optional[Dict[str, Any]] = None
+    monitoring_report: Optional[Dict[str, Any]] = None
+    cost_optimization_report: Optional[Dict[str, Any]] = None

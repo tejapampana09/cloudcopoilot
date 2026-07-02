@@ -46,19 +46,49 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
     {
       id: 3,
       label: 'Security Agent',
-      desc: 'Audits database locks & local upload risks',
-      status: status === 'completed' ? 'completed' : getAgentStatus('Deployment Agent') === 'completed' ? 'completed' : logs.length > 5 ? 'in_progress' : 'pending'
+      desc: 'Audits database locks & credentials leaks',
+      status: getAgentStatus('Deployment Agent') === 'completed' ? 'completed' : logs.length > 5 ? 'completed' : 'pending'
     },
     {
       id: 4,
-      label: 'Cloud Agent',
-      desc: 'Calculates dynamic cost & compute targets',
-      status: getAgentStatus('Deployment Agent')
+      label: 'Performance Agent',
+      desc: 'Checks SQLite write locks and file limits',
+      status: getAgentStatus('Deployment Agent') === 'completed' ? 'completed' : logs.length > 6 ? 'completed' : 'pending'
     },
     {
       id: 5,
-      label: 'Executive Report Agent',
-      desc: 'Assembles explainable cloud architecture reports',
+      label: 'Cloud Architect Agent',
+      desc: 'Runs weighted AWS recommendations engine',
+      status: getAgentStatus('Deployment Agent')
+    },
+    {
+      id: 6,
+      label: 'Infrastructure Agent',
+      desc: 'Compiles Terraform & Dockerfile modules',
+      status: getAgentStatus('Infrastructure Agent')
+    },
+    {
+      id: 7,
+      label: 'Deploy Agent',
+      desc: 'Outlines pre-flight checks and plans resources',
+      status: getAgentStatus('Deployment Agent')
+    },
+    {
+      id: 8,
+      label: 'Monitoring Agent',
+      desc: 'Configures CloudWatch alarms and metrics',
+      status: getAgentStatus('Monitoring Agent')
+    },
+    {
+      id: 9,
+      label: 'Cost Optimization Agent',
+      desc: 'Identifies Spot instances cost savings',
+      status: getAgentStatus('Deployment Agent')
+    },
+    {
+      id: 10,
+      label: 'Executive Agent',
+      desc: 'Assembles summary reports & readiness scores',
       status: getAgentStatus('Monitoring Agent')
     }
   ];
