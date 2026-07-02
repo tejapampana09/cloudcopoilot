@@ -252,8 +252,8 @@ function App() {
       }
     });
 
-    es.onerror = () => {
-      es.close();
+    es.onerror = (err) => {
+      console.error("EventSource connection warning:", err);
     };
   };
 
