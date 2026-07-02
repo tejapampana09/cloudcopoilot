@@ -6,9 +6,14 @@ All notable changes to the CloudPilot platform will be documented in this file.
 
 ## [2.0.0-beta] - 2026-07-02
 ### Added
-- **UI/UX Design System & Layout**: Styled [index.css](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/index.css) design tokens, gowing components, responsive page panels, collapsible sidebar tabs router, and real-time execution Timeline.
+- **UI/UX Design System & Layout**: Styled [index.css](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/index.css) design tokens, glowing components, and responsive panels.
+- **Premium Sidebar Navigation**: Implemented compact collapse mode, project Workspace Switcher dropdown, and a Command+K search bar.
+- **Dashboard Redesign Hero**: Added greetings hero panel ("Good Morning, Srikar Reddy"), operational status monitors, repository scanner input, and SaaS metrics insights.
+- **Tabbed Reports Panel**: Organized reports page into sub-tabs (Overview, Architecture, Security, Performance, AWS Topology, Cost Analyzer, IaC Deployment).
+- **Responsive SVG Charts**: Integrated SVG cost segment donut charts and compute host comparison bar charts.
+- **Agent Orchestration Timeline**: Redesigned [DeploymentStepsCard.tsx](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/components/DeploymentStepsCard.tsx) to resolve dynamic execution statuses (Repository Agent, Architecture Agent, Security Agent, Cloud Agent, Executive Report) from streamed logs.
 - **Git Analytics Engine**: Sub-process log audits evaluating commit sizes, author count, complexity mapping (Low/Medium/High), and dynamic Technical Debt scores.
-- **AI Technical Consultant**: Conversation chatbot in the UI calling real backend `/chat` RAG POST endpoint. Performs context-matched keyword file walk inside codebase and answers queries using OpenAI.
+- **Ask CloudCopilot RAG Chat**: Implemented [AIConsultantChat.tsx](file:///c:/Users/ss/Desktop/New%20folder/frontend/src/components/AIConsultantChat.tsx) with a left actions column to trigger direct codebase evaluations (explain architecture, reduce cost, analyze database scaling, security scoring, custom Terraform) calling the `/chat` RAG POST endpoint.
 - **Directory Cleanups daemon**: Spawns background thread worker on server start that automatically prunes temp_clones directories older than 1 hour.
 - **Pytest config**: Added `pytest.ini` ignoring temporary clone folders to ensure clean unit test collections.
 
