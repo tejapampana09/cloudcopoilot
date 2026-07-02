@@ -14,4 +14,4 @@ class User(Base):
     # Establish relationships for history tracking
     analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
     generations = relationship("Generation", back_populates="user", cascade="all, delete-orphan")
-    deployments = relationship("Deployment", back_populates="user", cascade="all, delete-orphan")
+

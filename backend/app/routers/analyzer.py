@@ -156,7 +156,7 @@ class ChatRequest(BaseModel):
     message: str
 
 
-@router.post("/chat")
+@router.post("/analyze/chat")
 async def chat_with_repository(request: ChatRequest, current_user: User = Depends(get_current_user)):
     """
     RAG-powered conversational repository consultant agent.
@@ -165,57 +165,24 @@ async def chat_with_repository(request: ChatRequest, current_user: User = Depend
         raise HTTPException(status_code=404, detail="Analysis session not found.")
     
     task_data = analysis_tasks[request.task_id]
-    
-    # Extract code files context matching query keywords
-    clone_path = os.path.join(settings.TEMP_CLONE_DIR, request.task_id)
     context = ""
     
-    if os.path.exists(clone_path):
-        matched_files = []
-        words = [w.lower() for w in request.message.split() if len(w) > 3]
-        
-        file_count = 0
-        for root, dirs, files in os.walk(clone_path):
-            if any(ignored in root for ignored in ['.git', 'node_modules', 'venv', '.venv', '__pycache__', 'dist', 'build']):
-                continue
-            for file in files:
-                filepath = os.path.join(root, file)
-                rel_path = os.path.relpath(filepath, clone_path)
-                
-                match = False
-                if any(w in file.lower() for w in words):
-                    match = True
-                else:
-                    try:
-                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                            head = f.read(500)
-                            if any(w in head.lower() for w in words):
-                                match = True
-                    except Exception:
-                        pass
-                
-                if match:
-                    try:
-                        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                            content = f.read(1500)
-                            matched_files.append(f"### FILE: {rel_path}\n```\n{content}\n```")
-                            file_count += 1
-                    except Exception:
-                        pass
-                
-                if file_count >= 3:
-                    break
-            if file_count >= 3:
-                break
-        
-        if matched_files:
-            context = "\n\n".join(matched_files)
+    if settings.OPENAI_API_KEY:
+        from app.services.indexing_service import IndexingService
+        matched = IndexingService.search_semantic(
+            task_id=request.task_id,
+            query=request.message,
+            api_key=settings.OPENAI_API_KEY,
+            k=5
+        )
+        if matched:
+            context = "\n\n".join([
+                f"### FILE: {m['file_path']} (Similarity: {m['score']})\n```\n{m['content']}\n```"
+                for m in matched
+            ])
             
     def call_llm(system_prompt: str, user_prompt: str) -> str:
         try:
-            from langchain_openai import ChatOpenAI
-            from langchain_core.prompts import ChatPromptTemplate
-            
             if not settings.OPENAI_API_KEY:
                 return "OpenAI API key not configured."
                 
@@ -227,6 +194,7 @@ async def chat_with_repository(request: ChatRequest, current_user: User = Depend
                 max_retries=2
             )
             
+            from langchain_core.prompts import ChatPromptTemplate
             prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
                 ("human", "{content}")
@@ -239,21 +207,21 @@ async def chat_with_repository(request: ChatRequest, current_user: User = Depend
             return f"Failed to call LLM: {str(e)}"
             
     system_prompt = (
-        "You are a Senior Solutions Architect and Technical Consultant. "
+        "You are an expert AI GitHub Repository Assistant. "
         "Use the provided repository context snippets to answer the developer's question accurately. "
         "Keep your answer highly technical, concise, and structured in Markdown format. "
-        "Refer to specific files, functions, or configurations detected in the context where relevant."
+        "Reference specific files, functions, or configurations where relevant. "
+        "If the query cannot be answered using the provided context, state that clearly and do not make up information."
     )
     
     user_prompt = (
         f"Repository: {task_data.get('repository_owner')}/{task_data.get('repository_name')}\n"
-        f"Primary Compute Target: {task_data.get('recommendation', {}).get('target', 'AWS App Runner')}\n"
-        f"Database Detected: {', '.join(task_data.get('metadata', {}).get('databases', []))}\n\n"
-        f"Repository Code Context:\n{context or 'No specific code context matching keywords was found.'}\n\n"
+        f"Primary Languages: {', '.join([l.get('name') for l in task_data.get('metadata', {}).get('languages', [])])}\n\n"
+        f"Repository Code Context:\n{context or 'No specific code context matching the query was found.'}\n\n"
         f"Developer Question: {request.message}"
     )
     
     response = call_llm(system_prompt, user_prompt)
-        
     return {"response": response}
+
 

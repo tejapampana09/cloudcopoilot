@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from app.core.config import settings
-from app.routers import analyzer, infrastructure, auth, deploy
+from app.routers import analyzer, infrastructure, auth
 from app.utils.database import init_db
 from app.utils.rate_limiter import RateLimitMiddleware
 
@@ -83,11 +83,7 @@ app.include_router(
     tags=["infrastructure"]
 )
 
-app.include_router(
-    deploy.router,
-    prefix=f"{settings.API_V1_STR}/deploy",
-    tags=["deploy"]
-)
+
 
 @app.get("/")
 async def root():

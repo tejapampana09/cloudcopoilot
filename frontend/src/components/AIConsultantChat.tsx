@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, MessageSquareCode, Sparkles, Loader2,
-  ShieldCheck, Cpu, Database, HelpCircle, FileText, ArrowRight,
+  ShieldCheck, Cpu, Database, FileText, ArrowRight,
   TrendingDown, KeyRound
 } from 'lucide-react';
 import type { AnalysisResult } from '../types';
@@ -22,7 +22,7 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `Hello! I am your **AI Technical Consultant**. I have audited your repository **${result.repository_owner}/${result.repository_name}**.\n\nYou can ask me details about the codebase layers, ORM configurations, estimated bottlenecks, database options, or request custom Terraform setups. How can I assist you today?`,
+      content: `Hello! I am your **AI Technical Consultant**. I have audited your repository **${result.repository_owner}/${result.repository_name}**.\n\nYou can ask me details about the codebase layers, ORM configurations, estimated bottlenecks, database options, or request custom build setup commands. How can I assist you today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -32,46 +32,40 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
 
   const consultantActions = [
     {
-      icon: <Cpu className="w-4 h-4 text-blue-400" />,
+      icon: <Cpu className="w-4 h-4 text-blue-500" />,
       label: 'Explain Architecture',
       query: 'Explain my repository architecture boundaries, folder structures, and overall framework setup.',
       desc: 'Codebase layers & framework overview'
     },
     {
-      icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
+      icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />,
       label: `Why Security Score ${result.health_score}?`,
       query: `Explain why our security score is ${result.health_score} out of 100, and show potential risks.`,
       desc: 'Security score audits & breakdown'
     },
     {
-      icon: <Database className="w-4 h-4 text-cyan-400" />,
+      icon: <Database className="w-4 h-4 text-cyan-500" />,
       label: 'Explain Databases',
       query: 'Check what databases and ORMs are used, and identify potential scaling bottlenecks.',
       desc: 'DB client checks & configurations'
     },
     {
-      icon: <FileText className="w-4 h-4 text-orange-400" />,
-      label: 'Generate Terraform',
-      query: 'Propose a custom Terraform outline showing VPC subnets and compute resources definitions.',
-      desc: 'Baseline IaC blueprints outline'
+      icon: <FileText className="w-4 h-4 text-orange-500" />,
+      label: 'Show Setup Commands',
+      query: 'List the setup, build, and run commands needed to install and execute this project locally.',
+      desc: 'Development execution blueprints'
     },
     {
-      icon: <TrendingDown className="w-4 h-4 text-rose-400" />,
-      label: 'Reduce AWS Cost',
-      query: 'Suggest cost-optimization options for our deployment target to minimize AWS spending.',
-      desc: 'Sizing & container scaling recommendations'
+      icon: <TrendingDown className="w-4 h-4 text-rose-500" />,
+      label: 'Identify Performance Risks',
+      query: 'Audits files complexity size, potential bottlenecks, and heavy dependencies configurations.',
+      desc: 'Sizing & database queries scaling'
     },
     {
-      icon: <KeyRound className="w-4 h-4 text-violet-400" />,
+      icon: <KeyRound className="w-4 h-4 text-violet-500" />,
       label: 'Explain Authentication',
       query: 'Check how authentication and authorization are handled in the repository, and evaluate security.',
       desc: 'Token validations & config checks'
-    },
-    {
-      icon: <HelpCircle className="w-4 h-4 text-amber-400" />,
-      label: 'Lambda vs ECS Fargate',
-      query: 'Compare AWS Lambda serverless vs ECS Fargate containers for this specific codebase.',
-      desc: 'Compute trade-offs & strategy'
     }
   ];
 
@@ -120,13 +114,13 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
       
       {/* LEFT COLUMN: ASK CLOUDCOPILOT DIRECT ACTIONS PANEL */}
       <div className="lg:col-span-1 flex flex-col gap-4 overflow-y-auto pr-1">
-        <div className="glass-panel p-5 rounded-2xl glow-blue border border-slate-800/40 space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-800/40 pb-3">
-            <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
-            <h4 className="text-sm font-extrabold text-white uppercase tracking-wider">Ask CloudCopilot</h4>
+        <div className="glass-panel p-5 rounded-2xl glow-blue border border-slate-200/50 space-y-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
+          <div className="flex items-center gap-2 border-b border-slate-200/50 pb-3">
+            <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+            <h4 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Ask Copilot</h4>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Select a structured query below to run automated code audits and receive explainable cloud proposals:
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Select a structured query below to run automated code audits and receive explainable solutions:
           </p>
         </div>
 
@@ -136,60 +130,60 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
               key={idx}
               onClick={() => handleSend(action.query)}
               disabled={isLoading}
-              className="w-full text-left glass-card glass-card-hover p-3.5 rounded-xl flex items-center justify-between gap-3 group cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-slate-800/50"
+              className="w-full text-left glass-card glass-card-hover p-3.5 rounded-xl flex items-center justify-between gap-3 group cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border-slate-200/50"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center border border-slate-850 shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">
                   {action.icon}
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-all block truncate">
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-all block truncate">
                     {action.label}
                   </span>
-                  <span className="text-[10px] text-slate-500 block truncate mt-0.5">{action.desc}</span>
+                  <span className="text-[10px] text-slate-455 block truncate mt-0.5">{action.desc}</span>
                 </div>
               </div>
-              <ArrowRight size={13} className="text-slate-500 group-hover:text-blue-400 transition-all shrink-0 group-hover:translate-x-1 duration-300" />
+              <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 transition-all shrink-0 group-hover:translate-x-1 duration-300" />
             </button>
           ))}
         </div>
       </div>
 
       {/* RIGHT COLUMN: INTERACTIVE CONVERSATION FEED */}
-      <div className="lg:col-span-2 glass-panel rounded-2xl flex flex-col h-full border border-slate-800/40 relative overflow-hidden">
+      <div className="lg:col-span-2 glass-panel rounded-2xl flex flex-col h-full border border-slate-200/50 relative overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.7)' }}>
         
         {/* Chat Header */}
-        <div className="p-4 border-b border-slate-800/40 bg-slate-900/20 flex justify-between items-center">
+        <div className="p-4 border-b border-slate-200/50 bg-slate-50/50 flex justify-between items-center">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
               <MessageSquareCode size={18} />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-white">AI Consultant Stream</h4>
-              <p className="text-[10px] text-slate-500">Auditing codebase via LLM + RAG</p>
+              <h4 className="text-sm font-bold text-slate-800">AI Consultant Stream</h4>
+              <p className="text-[10px] text-slate-550">Auditing codebase via LLM + Semantic RAG</p>
             </div>
           </div>
-          <span className="text-[9px] bg-blue-500/10 text-blue-400 font-bold px-2 py-0.5 rounded border border-blue-500/10">
+          <span className="text-[9px] bg-blue-500/10 text-blue-600 font-bold px-2 py-0.5 rounded border border-blue-500/10">
             CONTEXT CONNECTED
           </span>
         </div>
 
         {/* Message Feed */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+        <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-white/20">
           {messages.map((msg, idx) => {
             const isUser = msg.role === 'user';
             return (
               <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
                   isUser 
-                    ? 'bg-blue-600 text-white rounded-tr-none' 
-                    : 'bg-slate-900/60 border border-slate-800/60 text-slate-200 rounded-tl-none glow-blue'
+                    ? 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-600/10' 
+                    : 'bg-white border border-slate-200/60 text-slate-700 rounded-tl-none shadow-sm shadow-slate-100/40 glow-blue'
                 }`}>
                   {/* Parse markdown format */}
                   <div className="space-y-2">
                     {msg.content.split('\n\n').map((para, pIdx) => {
                       if (para.startsWith('### ')) {
-                        return <h5 key={pIdx} className="font-extrabold text-white text-xs mt-3 border-b border-slate-800/40 pb-1">{para.replace('### ', '')}</h5>;
+                        return <h5 key={pIdx} className="font-extrabold text-slate-800 text-xs mt-3 border-b border-slate-100 pb-1">{para.replace('### ', '')}</h5>;
                       }
                       if (para.startsWith('- ') || para.startsWith('* ')) {
                         return (
@@ -202,7 +196,7 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
                       }
                       if (para.startsWith('```')) {
                         return (
-                          <pre key={pIdx} className="bg-slate-950 p-2.5 rounded-lg border border-slate-850 text-[10px] text-cyan-400 overflow-x-auto font-mono">
+                          <pre key={pIdx} className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[10px] text-blue-600 overflow-x-auto font-mono">
                             {para.replace(/```[a-z]*\n|```/g, '')}
                           </pre>
                         );
@@ -210,7 +204,7 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
                       return <p key={pIdx}>{para}</p>;
                     })}
                   </div>
-                  <span className={`text-[8px] mt-1.5 block text-right ${isUser ? 'text-blue-200' : 'text-slate-500'}`}>
+                  <span className={`text-[8px] mt-1.5 block text-right ${isUser ? 'text-blue-100' : 'text-slate-400'}`}>
                     {msg.timestamp}
                   </span>
                 </div>
@@ -219,9 +213,9 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
           })}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-slate-900/60 border border-slate-800/60 text-slate-400 rounded-2xl rounded-tl-none px-4 py-3 text-xs flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-                <span>Consultant is auditing codebase files...</span>
+              <div className="bg-white border border-slate-200/60 text-slate-500 rounded-2xl rounded-tl-none px-4 py-3 text-xs flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                <span>Consultant is searching code vectors database...</span>
               </div>
             </div>
           )}
@@ -229,14 +223,14 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, task
         </div>
 
         {/* Input Tray */}
-        <div className="p-4 border-t border-slate-800/40 bg-slate-900/20 flex gap-2">
+        <div className="p-4 border-t border-slate-200/50 bg-slate-50/50 flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
-            placeholder="Ask about database models, VPC configurations, cost assumptions..."
-            className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/20 transition-all"
+            placeholder="Ask about database models, architectural flaws, security issues..."
+            className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-inner"
           />
           <button
             onClick={() => handleSend(input)}

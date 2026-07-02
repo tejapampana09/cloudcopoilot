@@ -29,12 +29,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
   ];
 
   return (
-    <aside className={`glass-panel border-r border-slate-800/50 flex flex-col h-screen fixed left-0 top-0 z-20 transition-all duration-300 ${
+    <aside className={`glass-panel border-r border-slate-200/60 flex flex-col h-screen fixed left-0 top-0 z-20 transition-all duration-300 ${
       isCollapsed ? 'w-20' : 'w-64'
-    }`}>
+    }`} style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
       
       {/* Brand Logo Header */}
-      <div className={`p-6 border-b border-slate-800/40 flex items-center justify-between gap-3 ${
+      <div className={`p-6 border-b border-slate-200/50 flex items-center justify-between gap-3 ${
         isCollapsed ? 'justify-center px-4' : ''
       }`}>
         <div className="flex items-center gap-3 min-w-0">
@@ -45,11 +45,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <h1 className="font-extrabold text-white text-sm tracking-tight leading-none bg-gradient-to-r from-white to-slate-350 bg-clip-text text-transparent truncate">
-                CloudPilot AI
+              <h1 className="font-extrabold text-slate-800 text-sm tracking-tight leading-none">
+                CloudCopilot AI
               </h1>
-              <span className="text-[9px] text-cyan-400 font-semibold uppercase tracking-wider block mt-1">
-                V2 Platform
+              <span className="text-[9px] text-blue-600 font-semibold uppercase tracking-wider block mt-1">
+                AI GitHub Engineer
               </span>
             </div>
           )}
@@ -59,31 +59,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
         {!isCollapsed && (
           <button 
             onClick={() => setIsCollapsed(true)}
-            className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            className="p-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
           >
             <ChevronLeft size={14} />
           </button>
         )}
       </div>
 
-      {/* Workspace Switcher Header (Compact if collapsed) */}
+      {/* Workspace Switcher Header */}
       {!isCollapsed ? (
         <div className="px-4 pt-4 relative">
           <button 
             onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/65 border border-slate-850 hover:border-slate-750 text-xs font-semibold text-slate-300 transition-all cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-white/80 border border-slate-200 hover:border-slate-350 text-xs font-semibold text-slate-700 transition-all cursor-pointer"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <FolderGit2 className="w-4 h-4 text-blue-400 shrink-0" />
+              <FolderGit2 className="w-4 h-4 text-blue-500 shrink-0" />
               <span className="truncate">{currentWorkspace}</span>
             </div>
-            <svg className="w-3 h-3 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
 
           {showWorkspaceDropdown && (
-            <div className="absolute left-4 right-4 mt-1.5 bg-slate-900 border border-slate-850 rounded-xl shadow-xl z-30 p-1.5 space-y-1">
+            <div className="absolute left-4 right-4 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-1.5 space-y-1">
               {workspaces.map((w, idx) => (
                 <button
                   key={idx}
@@ -91,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
                     setCurrentWorkspace(w);
                     setShowWorkspaceDropdown(false);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 transition-all truncate cursor-pointer block"
+                  className="w-full text-left px-3 py-2 rounded-lg text-[11px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all truncate cursor-pointer block"
                 >
                   {w}
                 </button>
@@ -103,22 +103,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
         <div className="flex justify-center pt-4">
           <button 
             onClick={() => setIsCollapsed(false)}
-            className="p-2 rounded-lg bg-slate-900 border border-slate-850 text-slate-400 hover:text-white cursor-pointer"
+            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer"
           >
             <ChevronRight size={14} />
           </button>
         </div>
       )}
 
-      {/* Global Search Bar (Only shown when expanded) */}
+      {/* Global Search Bar */}
       {!isCollapsed && (
         <div className="px-4 pt-3">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search or cmd+k" 
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950/40 border border-slate-850 text-[11px] text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/20"
+              placeholder="Search everywhere..." 
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/60 border border-slate-200 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500"
               disabled
             />
           </div>
@@ -142,19 +142,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
                   : 'w-full justify-between px-3.5 py-2.5'
               } ${
                 isActive
-                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-md shadow-blue-500/5'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/35 border border-transparent'
+                  ? 'bg-blue-50 text-blue-600 border border-blue-100 shadow-sm shadow-blue-500/5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/50 border border-transparent'
               } ${!item.enabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
               title={isCollapsed ? item.label : undefined}
             >
               <div className="flex items-center gap-3">
-                <span className={isActive ? 'text-blue-400' : 'text-slate-400'}>
+                <span className={isActive ? 'text-blue-600' : 'text-slate-500'}>
                   {item.icon}
                 </span>
                 {!isCollapsed && <span>{item.label}</span>}
               </div>
               {!isCollapsed && item.badge && (
-                <span className="text-[8px] bg-gradient-to-r from-violet-600 to-cyan-500 text-white font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wider shrink-0">
+                <span className="text-[8px] bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold px-1.5 py-0.5 rounded-md leading-none tracking-wider shrink-0">
                   {item.badge}
                 </span>
               )}
@@ -163,24 +163,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
         })}
       </nav>
 
-      {/* Onboarding Info Card (Hidden if collapsed) */}
+      {/* Onboarding Info Card */}
       {!isCollapsed && (
-        <div className="px-4 py-4 border-t border-slate-800/40">
-          <div className="bg-gradient-to-br from-slate-900/60 to-slate-950/45 p-4 rounded-xl border border-slate-800/50 relative overflow-hidden group">
+        <div className="px-4 py-4 border-t border-slate-200/50">
+          <div className="bg-gradient-to-br from-blue-50/50 to-indigo-50/30 p-4 rounded-xl border border-blue-100/60 relative overflow-hidden group">
             <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-blue-500/5 rounded-full blur-xl" />
             <div className="flex items-center gap-2 mb-1.5">
-              <Sparkles size={14} className="text-cyan-400" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider">CloudPilot AI</span>
+              <Sparkles size={14} className="text-blue-500" />
+              <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">AI GitHub Engineer</span>
             </div>
             <p className="text-[10px] text-slate-500 leading-relaxed">
-              V2 Enterprise Platform activated.
+              Connected workspace is indexed & ready for RAG query questions.
             </p>
           </div>
         </div>
       )}
 
       {/* User Profile */}
-      <div className={`p-4 border-t border-slate-800/40 flex items-center justify-between gap-3 bg-slate-950/20 ${
+      <div className={`p-4 border-t border-slate-200/50 flex items-center justify-between gap-3 bg-slate-50/30 ${
         isCollapsed ? 'justify-center px-2' : ''
       }`}>
         <div className="flex items-center gap-3 min-w-0">
@@ -189,10 +189,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-slate-200 truncate leading-none">
+              <span className="text-xs font-semibold text-slate-700 truncate leading-none">
                 {currentUser?.email?.split('@')[0] || 'User'}
               </span>
-              <span className="text-[10px] text-slate-500 truncate mt-1">
+              <span className="text-[10px] text-slate-400 truncate mt-1">
                 {currentUser?.email || 'user@example.com'}
               </span>
             </div>

@@ -31,10 +31,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 def init_db():
-    """Initializes PostgreSQL database tables if they do not exist."""
+    """Initializes database tables if they do not exist."""
     # Importing models here registers them on Base.metadata
     from app.models.user import User
-    from app.models.analysis import Analysis, Generation, Deployment
+    from app.models.analysis import Analysis, Generation, RepositoryChunk
     Base.metadata.create_all(bind=engine)
 
 class PersistentDict(dict):

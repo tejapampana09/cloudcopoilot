@@ -46,43 +46,43 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
     {
       id: 3,
       label: 'Security Agent',
-      desc: 'Audits credentials leaks & auth issues',
+      desc: 'Audits credentials leaks & JWT issues',
       status: getAgentStatus('Security Agent')
     },
     {
       id: 4,
       label: 'Performance Agent',
-      desc: 'Checks SQLite write locks and file limits',
+      desc: 'Audits component sizes & repeated pings',
       status: getAgentStatus('Performance Agent')
     },
     {
       id: 5,
       label: 'Cloud Architect Agent',
-      desc: 'Runs weighted AWS recommendations engine',
+      desc: 'Runs weighted bug scan checklists',
       status: getAgentStatus('Cloud Architect Agent')
     },
     {
       id: 6,
       label: 'Infrastructure Agent',
-      desc: 'Compiles Terraform & Dockerfile modules',
+      desc: 'Generates repository code indexations',
       status: getAgentStatus('Infrastructure Agent')
     },
     {
       id: 7,
       label: 'Deploy Agent',
-      desc: 'Outlines pre-flight checks and plans resources',
+      desc: 'Compiles hosting guide recommendations',
       status: getAgentStatus('Deployment Agent')
     },
     {
       id: 8,
       label: 'Monitoring Agent',
-      desc: 'Configures CloudWatch alarms and metrics',
+      desc: 'Configures health alarms & logging metrics',
       status: getAgentStatus('Monitoring Agent')
     },
     {
       id: 9,
-      label: 'Cost Optimization Agent',
-      desc: 'Identifies Spot instances cost savings',
+      label: 'Cost Agent',
+      desc: 'Identifies hosting spend optimization steps',
       status: getAgentStatus('Cost Optimization Agent')
     },
     {
@@ -94,43 +94,43 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
   ];
 
   return (
-    <div className="glass-panel p-6 rounded-2xl glow-blue flex flex-col h-full">
+    <div className="glass-panel p-6 rounded-2xl glow-blue flex flex-col h-full" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h4 className="text-sm font-bold text-white flex items-center gap-2">
-          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <svg className="w-5 h-5 text-blue-550" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Orchestration Timeline
         </h4>
-        <span className="text-[9px] bg-blue-500/10 text-blue-400 font-bold px-2 py-0.5 rounded border border-blue-500/10 uppercase tracking-wider">
+        <span className="text-[9px] bg-blue-500/10 text-blue-600 font-bold px-2 py-0.5 rounded border border-blue-200/50 uppercase tracking-wider">
           Multi-Agent
         </span>
       </div>
 
       {/* Steps List */}
-      <div className="flex-1 space-y-5">
+      <div className="flex-1 space-y-4 max-h-[480px] overflow-y-auto pr-1">
         {agentTimeline.map((step) => (
           <div key={step.id} className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 border ${
                 step.status === 'completed'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                   : step.status === 'in_progress'
-                  ? 'bg-blue-600/10 text-blue-400 border border-blue-500/25 animate-pulse'
+                  ? 'bg-blue-50 text-blue-600 border-blue-200 animate-pulse'
                   : step.status === 'failed'
-                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/25'
-                  : 'bg-slate-900 text-slate-500 border border-slate-800'
+                  ? 'bg-rose-50 text-rose-600 border-rose-200'
+                  : 'bg-slate-100 text-slate-400 border-slate-200'
               }`}>
                 {step.id}
               </div>
               <div>
                 <span className={`text-xs font-bold block ${
                   step.status === 'completed'
-                    ? 'text-slate-300'
+                    ? 'text-slate-700'
                     : step.status === 'in_progress'
-                    ? 'text-blue-400'
-                    : 'text-slate-500'
+                    ? 'text-blue-600'
+                    : 'text-slate-400'
                 }`}>
                   {step.label}
                 </span>
@@ -141,16 +141,16 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
             {/* Status Icon */}
             <div className="shrink-0 mt-1">
               {step.status === 'completed' && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-500/5" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-50" />
               )}
               {step.status === 'in_progress' && (
-                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
               )}
               {step.status === 'failed' && (
                 <HelpCircle className="w-4 h-4 text-rose-500" />
               )}
               {step.status === 'pending' && (
-                <Circle className="w-4 h-4 text-slate-800" />
+                <Circle className="w-4 h-4 text-slate-350" />
               )}
             </div>
           </div>

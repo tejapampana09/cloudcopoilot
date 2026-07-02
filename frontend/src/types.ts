@@ -96,6 +96,11 @@ export interface AnalysisResult {
   production_ready_prompt?: string;
   overall_repository_score?: number;
   overall_cloud_readiness_score?: number;
+  bugs?: any[];
+  security_issues?: any[];
+  performance_issues?: any[];
+  documentation?: any;
+  deployment_guide?: any;
 }
 
 export interface AnalyzeRequest {

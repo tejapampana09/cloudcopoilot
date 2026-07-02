@@ -1,25 +1,20 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell 
+} from 'recharts';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { UrlInputCard } from './components/UrlInputCard';
 import { AgentActivity } from './components/AgentActivity';
-import { RepoAnalysisCard } from './components/RepoAnalysisCard';
-import { ArchitectureCard } from './components/ArchitectureCard';
-import { CostCard } from './components/CostCard';
-import { ChecklistCard } from './components/ChecklistCard';
-import { SummaryCard } from './components/SummaryCard';
-import { DeploymentStepsCard } from './components/DeploymentStepsCard';
 import { RecentDeploymentsCard } from './components/RecentDeploymentsCard';
-import { ProgressPanel } from './components/ProgressPanel';
-import { InfrastructurePreview } from './components/InfrastructurePreview';
-import { ValidationReportCard } from './components/ValidationReportCard';
+import { DeploymentStepsCard } from './components/DeploymentStepsCard';
 import { AIConsultantChat } from './components/AIConsultantChat';
 import { useAnalysisStream } from './hooks/useAnalysisStream';
-import { useInfrastructureStream } from './hooks/useInfrastructureStream';
 import { 
   AlertCircle, Loader2, ShieldAlert, Sparkles, 
   Activity, Layers, FileCode2,
-  DollarSign, Zap, CheckCircle2
+  DollarSign, Zap, Bug, BookOpen, Terminal, ChevronRight
 } from 'lucide-react';
 import { Login } from './components/Login';
 import { api } from './services/api';
@@ -41,10 +36,10 @@ const CostDonut: React.FC<{ compute: number; database: number; storage: number; 
   let accumulatedPercent = 0;
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-6 p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl">
+    <div className="flex flex-col md:flex-row items-center gap-6 p-4 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
       <div className="relative w-28 h-28 shrink-0">
         <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#1e293b" strokeWidth="2.5" />
+          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" strokeWidth="2.5" />
           {data.map((item, idx) => {
             const percent = (item.value / total) * 100;
             const strokeDasharray = `${percent} ${100 - percent}`;
@@ -67,8 +62,8 @@ const CostDonut: React.FC<{ compute: number; database: number; storage: number; 
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total</span>
-          <span className="text-sm font-extrabold text-white">${total.toFixed(2)}</span>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total</span>
+          <span className="text-sm font-extrabold text-slate-800">${total.toFixed(2)}</span>
         </div>
       </div>
 
@@ -77,9 +72,9 @@ const CostDonut: React.FC<{ compute: number; database: number; storage: number; 
           <div key={idx} className="flex justify-between items-center text-[11px]">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-              <span className="text-slate-400 font-semibold">{item.label}</span>
+              <span className="text-slate-500 font-semibold">{item.label}</span>
             </div>
-            <span className="font-extrabold text-slate-200">
+            <span className="font-extrabold text-slate-700">
               ${item.value.toFixed(2)} ({((item.value / total) * 100).toFixed(0)}%)
             </span>
           </div>
@@ -103,10 +98,10 @@ const ComputeCompareChart: React.FC<{ recommendedTarget: string }> = ({
   const maxCost = Math.max(...options.map(o => o.cost));
 
   return (
-    <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-3">
-      <div className="flex justify-between text-xs border-b border-slate-800/40 pb-2">
-        <span className="font-bold text-white">Compute Options Monthly Estimations</span>
-        <span className="text-slate-400 text-[10px]">Compare host pricing</span>
+    <div className="p-4 bg-white border border-slate-200/60 rounded-2xl space-y-3 shadow-sm">
+      <div className="flex justify-between text-xs border-b border-slate-100 pb-2">
+        <span className="font-bold text-slate-800">Compute Hosting Monthly Estimations</span>
+        <span className="text-slate-400 text-[10px]">AWS Estimates</span>
       </div>
       <div className="space-y-3 pt-1">
         {options.map((opt, idx) => {
@@ -114,19 +109,19 @@ const ComputeCompareChart: React.FC<{ recommendedTarget: string }> = ({
           return (
             <div key={idx} className="space-y-1">
               <div className="flex justify-between items-center text-[10px]">
-                <span className={`font-semibold ${opt.active ? 'text-blue-400 font-extrabold' : 'text-slate-400'}`}>
+                <span className={`font-semibold ${opt.active ? 'text-blue-600 font-extrabold' : 'text-slate-650'}`}>
                   {opt.target} {opt.active && '(Recommended)'}
                 </span>
-                <span className={`font-extrabold ${opt.active ? 'text-blue-400' : 'text-slate-350'}`}>
+                <span className={`font-extrabold ${opt.active ? 'text-blue-600' : 'text-slate-500'}`}>
                   ${opt.cost.toFixed(2)}/mo
                 </span>
               </div>
-              <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-1000 ${
                     opt.active 
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-400' 
-                      : 'bg-slate-800'
+                      : 'bg-slate-250'
                   }`}
                   style={{ width: `${widthPct}%` }}
                 />
@@ -141,10 +136,9 @@ const ComputeCompareChart: React.FC<{ recommendedTarget: string }> = ({
 
 function App() {
   const { status, logs, result, error, startAnalysis, reset, taskId } = useAnalysisStream();
-  const [viewMode, setViewMode] = useState<'analyzer' | 'infrastructure'>('analyzer');
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const [reportsSubTab, setReportsSubTab] = useState<string>('Overview');
-  const infra = useInfrastructureStream();
+  const [docSubTab, setDocSubTab] = useState<string>('readme');
 
   const [authenticated, setAuthenticated] = useState<boolean>(api.isAuthenticated());
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -152,26 +146,10 @@ function App() {
 
   // Settings states
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('cloudpilot_openai_key') || '');
-  const [awsRegion, setAwsRegion] = useState<string>(() => localStorage.getItem('cloudpilot_aws_region') || 'ap-south-1');
-
-  // Live Deploy MVP states
-  const [awsAccessKey, setAwsAccessKey] = useState<string>('');
-  const [awsSecretKey, setAwsSecretKey] = useState<string>('');
-  const [awsRegionSelect, setAwsRegionSelect] = useState<string>('ap-south-1');
-  const [serviceNameInput, setServiceNameInput] = useState<string>('');
-  const [awsConnectionArn, setAwsConnectionArn] = useState<string>(() => localStorage.getItem('cloudpilot_aws_connection_arn') || '');
-  const [awsVerified, setAwsVerified] = useState<boolean>(false);
-  const [verifyingAws, setVerifyingAws] = useState<boolean>(false);
-  const [awsVerifyMessage, setAwsVerifyMessage] = useState<string | null>(null);
-  const [deploymentId, setDeploymentId] = useState<string | null>(null);
-  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'completed' | 'failed' | 'destroying' | 'destroyed'>('idle');
-  const [deployLogs, setDeployLogs] = useState<any[]>([]);
-  const [deployConsole, setDeployConsole] = useState<string[]>([]);
-  const [liveUrl, setLiveUrl] = useState<string | null>(null);
-  const [deployDuration, setDeployDuration] = useState<number>(0);
-  const [triggeringDeploy, setTriggeringDeploy] = useState<boolean>(false);
-  const [deployHistory, setDeployHistory] = useState<any[]>([]);
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
+
+  // New selected bug state
+  const [selectedBugIndex, setSelectedBugIndex] = useState<number>(0);
 
   // Get time-aware greeting
   const getGreeting = () => {
@@ -193,153 +171,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (result) {
-      setServiceNameInput(`cloudpilot-${result.repository_name.toLowerCase()}`);
-    }
-  }, [result]);
-
-  const fetchDeployHistory = async () => {
-    try {
-      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/history`, {
-        headers: {
-          'Authorization': `Bearer ${api.getToken()}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDeployHistory(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch deploy history", err);
-    }
-  };
-
-  const handleVerifyAWS = async () => {
-    if (!awsAccessKey || !awsSecretKey) {
-      setAwsVerifyMessage("Access Key and Secret Key are required.");
-      return;
-    }
-    setVerifyingAws(true);
-    setAwsVerifyMessage(null);
-    try {
-      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/connect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${api.getToken()}`
-        },
-        body: JSON.stringify({
-          access_key: awsAccessKey,
-          secret_key: awsSecretKey,
-          region: awsRegionSelect
-        })
-      });
-      
-      const data = await response.json();
-      if (response.ok) {
-        setAwsVerified(true);
-        setAwsVerifyMessage("AWS IAM Credentials verified successfully!");
-      } else {
-        setAwsVerified(false);
-        setAwsVerifyMessage(data.detail || "Verification failed. Check your credentials.");
-      }
-    } catch (err: any) {
-      setAwsVerified(false);
-      setAwsVerifyMessage(err.message || "Failed to connect to verification API.");
-    } finally {
-      setVerifyingAws(false);
-    }
-  };
-
-  const startDeployProgressStream = (depId: string) => {
-    setDeployStatus('deploying');
-    const es = new EventSource(`${api.getApiBaseUrl()}/api/v1/deploy/stream/${depId}`);
-    
-    es.addEventListener('deployment', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        setDeployLogs(data.logs || []);
-        setDeployConsole(data.console || []);
-        setDeployStatus(data.status);
-        if (data.status === 'completed') {
-          setLiveUrl(data.url);
-          setDeployDuration(data.duration_seconds);
-          es.close();
-          fetchDeployHistory();
-        } else if (data.status === 'failed' || data.status === 'destroyed') {
-          es.close();
-          fetchDeployHistory();
-        }
-      } catch (err) {
-        console.error("Failed to parse SSE deploy message", err);
-      }
-    });
-
-    es.onerror = (err) => {
-      console.error("EventSource connection warning:", err);
-    };
-  };
-
-  const handleTriggerDeploy = async () => {
-    if (!result || !awsAccessKey || !awsSecretKey || !serviceNameInput) return;
-    setTriggeringDeploy(true);
-    setDeployLogs([]);
-    setDeployConsole([]);
-    try {
-      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/trigger`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${api.getToken()}`
-        },
-        body: JSON.stringify({
-          repository_url: result.repository_url,
-          repository_name: result.repository_name,
-          access_key: awsAccessKey,
-          secret_key: awsSecretKey,
-          region: awsRegionSelect,
-          service_name: serviceNameInput,
-          connection_arn: awsConnectionArn
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setDeploymentId(data.deployment_id);
-        startDeployProgressStream(data.deployment_id);
-      } else {
-        alert(data.detail || "Failed to trigger deployment.");
-      }
-    } catch (err: any) {
-      alert(err.message || "Network error triggering deployment.");
-    } finally {
-      setTriggeringDeploy(false);
-    }
-  };
-
-  const handleDestroyDeploy = async () => {
-    if (!deploymentId) return;
-    setDeployStatus('destroying');
-    try {
-      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/destroy/${deploymentId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${api.getToken()}`
-        }
-      });
-      if (response.ok) {
-        startDeployProgressStream(deploymentId);
-      } else {
-        alert("Failed to trigger decommissioning.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
     if (authenticated) {
-      fetchDeployHistory();
       fetchHealth();
     }
   }, [authenticated]);
@@ -369,6 +201,7 @@ function App() {
     if (status === 'completed' && result) {
       setActiveTab('Reports');
       setReportsSubTab('Overview');
+      setSelectedBugIndex(0);
     }
   }, [status, result]);
 
@@ -385,23 +218,19 @@ function App() {
 
   const handleResetAll = () => {
     reset();
-    infra.reset();
-    setViewMode('analyzer');
     setActiveTab('Dashboard');
   };
 
   const handleSaveSettings = () => {
     localStorage.setItem('cloudpilot_openai_key', apiKey);
-    localStorage.setItem('cloudpilot_aws_region', awsRegion);
-    localStorage.setItem('cloudpilot_aws_connection_arn', awsConnectionArn);
     alert('Settings saved successfully!');
   };
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#080C14] text-slate-100 flex items-center justify-center gap-2">
-        <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-        <span className="text-sm font-semibold text-slate-400">Verifying session...</span>
+      <div className="min-h-screen bg-slate-50 text-slate-700 flex items-center justify-center gap-2">
+        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+        <span className="text-sm font-semibold text-slate-500">Verifying session...</span>
       </div>
     );
   }
@@ -410,8 +239,49 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
+  // Calculate severity stats for Recharts
+  const getSeverityChartData = () => {
+    if (!result) return [];
+    const bugs = result.bugs || [];
+    const sec = result.security_issues || [];
+    const perf = result.performance_issues || [];
+
+    const stats = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+
+    bugs.forEach(() => {
+      // Heuristic map bug confidence/score to severity
+      stats.High += 1;
+    });
+
+    sec.forEach((s: any) => {
+      const sev = s.severity as keyof typeof stats;
+      if (stats[sev] !== undefined) stats[sev] += 1;
+      else stats.High += 1;
+    });
+
+    perf.forEach((p: any) => {
+      const sev = p.severity as keyof typeof stats;
+      if (stats[sev] !== undefined) stats[sev] += 1;
+      else stats.Medium += 1;
+    });
+
+    return [
+      { name: 'Critical', value: stats.Critical, fill: '#ef4444' },
+      { name: 'High', value: stats.High, fill: '#f97316' },
+      { name: 'Medium', value: stats.Medium, fill: '#eab308' },
+      { name: 'Low', value: stats.Low, fill: '#3b82f6' }
+    ].filter(d => d.value > 0);
+  };
+
+  const severityData = getSeverityChartData();
+
   return (
-    <div className="min-h-screen bg-[#080C14] text-slate-100 flex">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex relative overflow-hidden">
+      
+      {/* Background Gradient splashes */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-tr from-blue-300/10 via-cyan-200/10 to-purple-300/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[300px] h-[300px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
       {/* Sidebar Navigation */}
       <Sidebar 
         activeTab={activeTab} 
@@ -420,10 +290,10 @@ function App() {
         currentUser={currentUser}
       />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col pl-64 relative z-10">
         {/* Header - sync with active node status */}
         <Header 
-          status={viewMode === 'infrastructure' ? (infra.status === 'generating' ? 'analyzing' : infra.status) : status} 
+          status={status} 
           userEmail={currentUser?.email}
           onLogout={handleLogout}
         />
@@ -432,16 +302,16 @@ function App() {
         <main className="flex-1 mt-[80px] p-8 overflow-y-auto space-y-8 max-w-7xl w-full mx-auto">
           
           {/* Error Banner */}
-          {(error || infra.error) && (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-sm">
-              <AlertCircle size={18} className="shrink-0" />
+          {error && (
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200/60 text-rose-800 text-sm">
+              <AlertCircle size={18} className="shrink-0 text-rose-600" />
               <div className="flex-1">
                 <span className="font-bold">Error encountered: </span>
-                {error || infra.error}
+                {error}
               </div>
               <button 
                 onClick={handleResetAll}
-                className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/20 text-rose-300 font-semibold text-xs transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 border border-rose-200 text-rose-800 font-semibold text-xs transition-all cursor-pointer shadow-sm"
               >
                 Clear & Reset
               </button>
@@ -465,37 +335,42 @@ function App() {
 
           {/* PAGES ROUTER (IDLE / COMPLETED PHASES) */}
           {status !== 'analyzing' && (
-            <>
+            <AnimatePresence mode="wait">
               {/* TAB 1: DASHBOARD (HERO + SCANNER HOME) */}
               {activeTab === 'Dashboard' && (
-                <div className="space-y-8 animate-[fadeIn_0.4s_ease-out]">
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-8"
+                >
                   {/* Hero Greetings Section */}
-                  <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800/40 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-blue">
+                  <div className="p-6 rounded-3xl bg-white border border-slate-200/60 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm">
+                    <div className="absolute -right-4 -bottom-4 w-40 h-40 bg-gradient-to-tr from-blue-500/5 to-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
                     <div className="space-y-1.5">
-                      <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                      <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                         {getGreeting()}, {currentUser?.email?.split('@')[0] || 'Developer'}!
-                        <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+                        <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
                       </h2>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Cloud health status:{' '}
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        System health status:{' '}
                         {backendHealthy === null
-                          ? <span className="text-slate-500 font-bold">Checking...</span>
+                          ? <span className="text-slate-450 font-bold">Checking...</span>
                           : backendHealthy
-                          ? <span className="text-emerald-400 font-bold">All Systems Operational</span>
-                          : <span className="text-rose-400 font-bold">Backend Offline</span>
-                        }{' '}· Scanning pipeline is ready.
+                          ? <span className="text-emerald-600 font-bold">All Systems Operational</span>
+                          : <span className="text-rose-600 font-bold">Backend Offline</span>
+                        }{' '}· Ready to index your next repository.
                       </p>
                     </div>
-                    <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border ${
+                    <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border ${
                       backendHealthy === false
-                        ? 'bg-rose-500/10 border-rose-500/15'
-                        : 'bg-emerald-500/10 border-emerald-500/15'
+                        ? 'bg-rose-50 border-rose-200 text-rose-700'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                     }`}>
-                      <Activity className={`w-4 h-4 ${backendHealthy === false ? 'text-rose-400' : 'text-emerald-400 animate-pulse'}`} />
-                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                        backendHealthy === false ? 'text-rose-400' : 'text-emerald-400'
-                      }`}>
-                        {backendHealthy === false ? 'Offline' : 'Health 100%'}
+                      <Activity className={`w-4 h-4 ${backendHealthy === false ? 'text-rose-600' : 'text-emerald-600 animate-pulse'}`} />
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider">
+                        {backendHealthy === false ? 'Offline' : 'Connected'}
                       </span>
                     </div>
                   </div>
@@ -508,52 +383,48 @@ function App() {
                     </div>
 
                     {/* Insights Card */}
-                    <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 flex flex-col justify-between h-full space-y-6">
+                    <div className="glass-panel p-6 rounded-3xl border border-slate-200/60 flex flex-col justify-between h-full space-y-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
                       <div className="space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
-                          <Layers className="w-4 h-4 text-blue-400" />
-                          <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">SaaS Insights</h4>
+                        <div className="flex items-center gap-2 border-b border-slate-200/50 pb-3">
+                          <Layers className="w-4 h-4 text-blue-500" />
+                          <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Platform Analytics</h4>
                         </div>
                         <div className="space-y-3.5">
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400 font-semibold">Active Workspaces</span>
-                            <span className="font-extrabold text-slate-200">1 (Local Sandbox)</span>
+                            <span className="text-slate-500 font-semibold">Active workspace</span>
+                            <span className="font-extrabold text-slate-700">1 (Local Sandbox)</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400 font-semibold">Recent Audits count</span>
-                            <span className="font-extrabold text-slate-200">{deployHistory.length > 0 ? `${deployHistory.length} Deployment${deployHistory.length !== 1 ? 's' : ''}` : 'No history yet'}</span>
+                            <span className="text-slate-500 font-semibold">V2 RAG indexes</span>
+                            <span className="font-extrabold text-slate-700">Enabled</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-slate-400 font-semibold">Security Alerts status</span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold border ${
-                              backendHealthy === false
-                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            }`}>{backendHealthy === false ? 'OFFLINE' : 'CLEAN'}</span>
+                            <span className="text-slate-500 font-semibold">Security checks tier</span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-50 text-blue-600 border border-blue-200 uppercase tracking-wider">ENTERPRISE</span>
                           </div>
                         </div>
                       </div>
-                      <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/10 text-[10px] text-slate-400 leading-relaxed">
-                        To view your architectural details, cost donut graphs, or download Terraform files, select the **Reports** or **AI consultant** tabs after running a repository scan.
+                      <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-100/60 text-[10px] text-slate-500 leading-relaxed">
+                        To view your architectural details, bug diagnostics, security scanner, performance charts, and auto-generated deployment guides, input your repository URL above to execute the 12-agent pipeline.
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* TAB 2: REPORTS (TABBED SCAN REPORTS VIEW) */}
               {activeTab === 'Reports' && !result && (
                 <div className="flex flex-col items-center justify-center py-24 space-y-4 text-center animate-[fadeIn_0.4s_ease-out]">
-                  <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                    <FileCode2 className="w-8 h-8 text-slate-600" />
+                  <div className="w-16 h-16 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+                    <FileCode2 className="w-8 h-8 text-slate-400" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-300">No Analysis Yet</h3>
+                  <h3 className="text-base font-bold text-slate-700">No Analysis Yet</h3>
                   <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Run a repository scan from the Dashboard tab first. Reports will appear here once the 10-agent pipeline completes.
+                    Run a repository scan from the Dashboard tab first. Reports will appear here once the 12-agent AI pipeline completes.
                   </p>
                   <button
                     onClick={() => setActiveTab('Dashboard')}
-                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
                   >
                     Go to Dashboard
                   </button>
@@ -561,49 +432,64 @@ function App() {
               )}
 
               {activeTab === 'Reports' && result && (
-                <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-8"
+                >
                   {/* Tooling Header */}
-                  <div className="flex justify-between items-center bg-slate-900/45 p-4 rounded-xl border border-slate-800/40 flex-wrap gap-4">
+                  <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200/60 flex-wrap gap-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-200/50 flex items-center justify-center text-blue-500">
                         <FileCode2 size={16} />
                       </div>
                       <div>
-                        <h3 className="text-xs font-extrabold text-white">
-                          Audits for {result.repository_owner}/{result.repository_name}
+                        <h3 className="text-xs font-extrabold text-slate-800">
+                          Audited {result.repository_owner}/{result.repository_name}
                         </h3>
-                        <p className="text-[9px] text-slate-500 mt-0.5">
-                          Readiness score: {result.health_score}/100 &middot; Recommending {result.recommendation.target}
+                        <p className="text-[9px] text-slate-450 mt-0.5">
+                          Quality score: {result.health_score}/100 &middot; Recommending {result.recommendation?.target || 'AWS App Runner'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={handleResetAll}
-                        className="px-3.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-slate-800 text-[10px] font-bold text-slate-350 flex items-center gap-1.5 transition-all cursor-pointer shadow"
-                      >
-                        <RefreshCwIcon className="w-3 h-3" />
-                        Scan Different
-                      </button>
-                    </div>
+                    <button 
+                      onClick={handleResetAll}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3-3-3" />
+                      </svg>
+                      Scan Different Repo
+                    </button>
                   </div>
 
                   {/* Reports Sub-Tab Panel Selection Header */}
-                  <div className="flex gap-2 flex-wrap border-b border-slate-850 pb-2">
-                    {['Overview', 'Architecture', 'Security', 'Performance', 'AWS Topology', 'Cost Analyzer', 'DevOps', 'IaC Deployment'].map((tab) => {
-                      const isActive = reportsSubTab === tab;
+                  <div className="flex gap-1.5 flex-wrap border-b border-slate-200/80 pb-2">
+                    {[
+                      { id: 'Overview', label: 'Overview', icon: <Layers size={14} /> },
+                      { id: 'Bugs', label: 'Bugs & Fixes', icon: <Bug size={14} /> },
+                      { id: 'Security', label: 'Security Scanner', icon: <ShieldAlert size={14} /> },
+                      { id: 'Performance', label: 'Performance Audit', icon: <Zap size={14} /> },
+                      { id: 'Documentation', label: 'Documentation', icon: <BookOpen size={14} /> },
+                      { id: 'DeploymentGuide', label: 'Deployment Guide', icon: <Terminal size={14} /> },
+                      { id: 'Cost', label: 'Cost Analyzer', icon: <DollarSign size={14} /> }
+                    ].map((tab) => {
+                      const isActive = reportsSubTab === tab.id;
                       return (
                         <button
-                          key={tab}
-                          onClick={() => setReportsSubTab(tab)}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          key={tab.id}
+                          onClick={() => setReportsSubTab(tab.id)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                             isActive
-                              ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
-                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                              ? 'bg-blue-600 text-white border border-blue-500 shadow-sm shadow-blue-500/10'
+                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
                           }`}
                         >
-                          {tab}
+                          {tab.icon}
+                          {tab.label}
                         </button>
                       );
                     })}
@@ -611,680 +497,542 @@ function App() {
 
                   {/* SUB-TABS ROUTER */}
                   <div className="space-y-8">
+                    
                     {/* Sub-Tab 1: Overview */}
                     {reportsSubTab === 'Overview' && (
-                      <div className="space-y-8">
+                      <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                          <div className="lg:col-span-1 space-y-8">
-                            <RepoAnalysisCard result={result} />
+                          
+                          {/* Left stats cards */}
+                          <div className="lg:col-span-1 space-y-6">
+                            <div className="glass-panel p-6 rounded-2xl border border-slate-200/60 flex flex-col justify-center items-center shadow-sm text-center bg-white">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Repository Quality Score</span>
+                              
+                              {/* circular ring SVG health display */}
+                              <div className="relative w-36 h-36 mt-4 flex items-center justify-center">
+                                <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+                                  <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                                  <circle 
+                                    cx="18" 
+                                    cy="18" 
+                                    r="15.915" 
+                                    fill="none" 
+                                    stroke="#3b82f6" 
+                                    strokeWidth="3.2" 
+                                    strokeDasharray={`${result.health_score} ${100 - result.health_score}`}
+                                    strokeDashoffset="0"
+                                    className="transition-all duration-1000"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                  <span className="text-3xl font-extrabold text-slate-800">{result.health_score}</span>
+                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">/ 100</span>
+                                </div>
+                              </div>
+
+                              <p className="text-[11px] text-slate-500 leading-relaxed mt-4">
+                                Score calculated across bugs checklist, security vulnerability scanners, and performance benchmarks.
+                              </p>
+                            </div>
+
+                            <div className="p-5 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Scan Profile</h4>
+                              <div className="space-y-2.5 text-xs text-slate-600">
+                                <div className="flex justify-between">
+                                  <span>Framework:</span>
+                                  <span className="font-bold text-slate-800">{result.deployment_guide?.framework_detected || result.metadata.frameworks[0] || 'Unknown'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Languages:</span>
+                                  <span className="font-bold text-slate-800">{result.metadata.languages.map(l => l.name).slice(0, 2).join(', ')}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Complexity:</span>
+                                  <span className="font-bold text-slate-800">{result.metadata.complexity_index || 'Medium'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Technical Debt:</span>
+                                  <span className="font-bold text-blue-600">{result.metadata.technical_debt_score || 40}/100</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="lg:col-span-2 space-y-8">
-                            <SummaryCard 
-                              summary={result.ai_summary} 
-                              isAiEnhanced={!!result.ai_summary && (result.ai_summary.includes("OpenAI") || result.ai_summary.length > 150)} 
-                              productionPrompt={result.production_ready_prompt || result.executive_summary?.production_ready_prompt}
-                            />
-                            {/* Score Indicators */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl flex flex-col justify-center items-center">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Repository Quality</span>
-                                <span className="text-2xl font-extrabold text-blue-400 mt-1">{result.overall_repository_score || 85}%</span>
+
+                          {/* Right summary panel */}
+                          <div className="lg:col-span-2 space-y-6">
+                            <div className="p-6 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm relative overflow-hidden">
+                              <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl" />
+                              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                <Sparkles className="w-4.5 h-4.5 text-blue-600" />
+                                Executive AI Summary
+                              </h4>
+                              <p className="text-xs text-slate-600 leading-relaxed">{result.ai_summary}</p>
+                              
+                              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Found Bugs</span>
+                                  <span className="text-xl font-bold text-slate-700">{result.bugs?.length || 0} issues</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                  <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider block">Security Warnings</span>
+                                  <span className="text-xl font-bold text-slate-700">{result.security_issues?.length || 0} risks</span>
+                                </div>
                               </div>
-                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl flex flex-col justify-center items-center">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Cloud Readiness</span>
-                                <span className="text-2xl font-extrabold text-emerald-400 mt-1">{result.overall_cloud_readiness_score || result.health_score || 78}%</span>
+                            </div>
+
+                            {/* Issue severity chart */}
+                            {severityData.length > 0 && (
+                              <div className="p-6 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Scan Warnings Breakdown</h4>
+                                <div className="h-44 w-full">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={severityData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                      <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
+                                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                                      <Tooltip cursor={{ fill: 'rgba(15,23,42,0.03)' }} />
+                                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                        {severityData.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                      </Bar>
+                                    </BarChart>
+                                  </ResponsiveContainer>
+                                </div>
                               </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 2: Bugs & Fix Suggestions */}
+                    {reportsSubTab === 'Bugs' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-[fadeIn_0.3s_ease-out]">
+                        
+                        {/* Bugs Checklist List */}
+                        <div className="lg:col-span-1 space-y-3">
+                          <div className="p-4 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bugs Scanner ({result.bugs?.length || 0})</span>
+                          </div>
+                          {(result.bugs || []).map((bug, index) => {
+                            const isSelected = selectedBugIndex === index;
+                            return (
+                              <button
+                                key={index}
+                                onClick={() => setSelectedBugIndex(index)}
+                                className={`w-full text-left p-3.5 rounded-xl border flex justify-between items-center gap-3 transition-all cursor-pointer shadow-sm ${
+                                  isSelected 
+                                    ? 'bg-blue-600 text-white border-blue-500' 
+                                    : 'bg-white border-slate-200/60 hover:bg-slate-50 text-slate-700'
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold block truncate">{bug.problem}</span>
+                                  <span className={`text-[9px] mt-1 block uppercase font-extrabold ${isSelected ? 'text-blue-200' : 'text-blue-600'}`}>
+                                    Confidence: {bug.confidence_score}%
+                                  </span>
+                                </div>
+                                <ChevronRight size={14} className={isSelected ? 'text-blue-200' : 'text-slate-400'} />
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Selected Bug Details Panel */}
+                        <div className="lg:col-span-2">
+                          {result.bugs && result.bugs[selectedBugIndex] ? (
+                            <div className="bg-white border border-slate-200/60 rounded-2xl p-6 space-y-5 shadow-sm">
+                              <div>
+                                <span className="px-2.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wider">
+                                  BUG DIAGNOSTIC
+                                </span>
+                                <h3 className="text-base font-extrabold text-slate-800 mt-2">{result.bugs[selectedBugIndex].problem}</h3>
+                              </div>
+
+                              <div className="space-y-3.5 text-xs">
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Reason:</span>
+                                  <p className="text-slate-500 mt-1 leading-relaxed">{result.bugs[selectedBugIndex].reason}</p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Impact:</span>
+                                  <p className="text-slate-500 mt-1 leading-relaxed">{result.bugs[selectedBugIndex].impact}</p>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Affected Files:</span>
+                                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {result.bugs[selectedBugIndex].affected_files.map((f: string, fIdx: number) => (
+                                      <span key={fIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px]">
+                                        {f}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Suggested Solution:</span>
+                                  <p className="text-slate-500 mt-1 leading-relaxed">{result.bugs[selectedBugIndex].suggested_solution}</p>
+                                </div>
+                                {result.bugs[selectedBugIndex].example_code && (
+                                  <div>
+                                    <span className="font-bold text-slate-850 block mb-2">Example Fix Code:</span>
+                                    <pre className="p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[10px] text-blue-600 overflow-x-auto leading-relaxed shadow-inner">
+                                      {result.bugs[selectedBugIndex].example_code}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-12 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-2xl shadow-sm italic">
+                              No bug reports details compiled.
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 3: Security Scanner */}
+                    {reportsSubTab === 'Security' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-[fadeIn_0.3s_ease-out]">
+                        
+                        {/* Left column: Security checklist */}
+                        <div className="lg:col-span-1 space-y-6">
+                          <div className="p-5 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                              <ShieldAlert className="w-4 h-4 text-orange-500" />
+                              Security Audits Checklist
+                            </h4>
+                            <div className="space-y-3">
+                              {result.checklist.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-lg">
+                                  <span className="text-slate-655 font-medium">{item.label}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase border ${
+                                    item.status === 'checked' 
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                      : item.status === 'warning' 
+                                      ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                                      : 'bg-rose-550/10 text-rose-700 border-rose-200'
+                                  }`}>
+                                    {item.status === 'checked' ? 'PASS' : item.status === 'warning' ? 'WARN' : 'FAIL'}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
 
-                        {result.executive_summary && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                            <div className="p-5 bg-rose-500/5 border border-rose-500/10 rounded-xl space-y-3">
-                              <h4 className="text-xs font-extrabold text-rose-400 uppercase tracking-wider flex items-center gap-2">
-                                <ShieldAlert className="w-4.5 h-4.5" />
-                                Priority Fixes
-                              </h4>
-                              <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-350">
-                                {result.executive_summary.priority_fixes.map((fix: string, idx: number) => (
-                                  <li key={idx}>{fix}</li>
-                                ))}
-                              </ul>
+                        {/* Right column: vulnerabilities details */}
+                        <div className="lg:col-span-2 space-y-4">
+                          {(result.security_issues || []).map((issue: any, index: number) => (
+                            <div key={index} className="bg-white border border-slate-200/60 rounded-2xl p-5 space-y-4 shadow-sm relative overflow-hidden">
+                              <div className="flex justify-between items-start flex-wrap gap-2">
+                                <div>
+                                  <span className={`px-2.5 py-0.5 rounded text-[8px] font-extrabold border uppercase tracking-wider ${
+                                    issue.severity === 'Critical' || issue.severity === 'High' 
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}>
+                                    {issue.severity} Severity
+                                  </span>
+                                  <h4 className="text-sm font-bold text-slate-800 mt-2">{issue.issue_type} Warning</h4>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3 text-xs">
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Description:</span>
+                                  <p className="text-slate-500 mt-1 leading-relaxed">{issue.description}</p>
+                                </div>
+                                {issue.affected_files && issue.affected_files.length > 0 && (
+                                  <div>
+                                    <span className="font-bold text-slate-850 block">Affected Files:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {issue.affected_files.map((f: string, fIdx: number) => (
+                                        <span key={fIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[9px]">
+                                          {f}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Suggested Fix:</span>
+                                  <p className="text-slate-500 mt-1 leading-relaxed bg-blue-50/20 p-2.5 rounded-lg border border-blue-100/30">{issue.suggested_fix}</p>
+                                </div>
+                              </div>
                             </div>
-                            <div className="p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-3">
-                              <h4 className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
-                                Cloud Action Plan
-                              </h4>
-                              <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-350">
-                                {result.executive_summary.action_plan.map((act: string, idx: number) => (
-                                  <li key={idx}>{act}</li>
-                                ))}
-                              </ul>
+                          ))}
+                          {(!result.security_issues || result.security_issues.length === 0) && (
+                            <div className="p-12 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-2xl shadow-sm italic">
+                              No security issues detected. Security score: 100/100.
                             </div>
+                          )}
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 4: Performance Audit */}
+                    {reportsSubTab === 'Performance' && (
+                      <div className="space-y-4 max-w-4xl mx-auto animate-[fadeIn_0.3s_ease-out]">
+                        {(result.performance_issues || []).map((issue: any, index: number) => (
+                          <div key={index} className="bg-white border border-slate-200/60 rounded-2xl p-5 space-y-4 shadow-sm">
+                            <div>
+                              <span className="px-2.5 py-0.5 rounded text-[8px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">
+                                {issue.severity} Performance Impact
+                              </span>
+                              <h4 className="text-sm font-bold text-slate-800 mt-2">{issue.issue_type} Bottleneck</h4>
+                            </div>
+
+                            <div className="space-y-3 text-xs">
+                              <div>
+                                <span className="font-bold text-slate-850 block">Description:</span>
+                                <p className="text-slate-500 mt-1 leading-relaxed">{issue.description}</p>
+                              </div>
+                              {issue.affected_files && issue.affected_files.length > 0 && (
+                                <div>
+                                  <span className="font-bold text-slate-850 block">Affected Files:</span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {issue.affected_files.map((f: string, fIdx: number) => (
+                                      <span key={fIdx} className="px-2 py-0.5 rounded bg-slate-100 text-slate-655 font-mono text-[9px]">
+                                        {f}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <span className="font-bold text-slate-850 block">Suggested Fix:</span>
+                                <p className="text-slate-500 mt-1 leading-relaxed bg-cyan-50/10 p-2.5 rounded-lg border border-cyan-100/30">{issue.suggested_fix}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {(!result.performance_issues || result.performance_issues.length === 0) && (
+                          <div className="p-12 text-center text-xs text-slate-500 bg-white border border-slate-200 rounded-2xl shadow-sm italic">
+                            No performance bottlenecks detected. App scales smoothly.
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Sub-Tab 2: Architecture */}
-                    {reportsSubTab === 'Architecture' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        <div className="lg:col-span-2">
-                          <ArchitectureCard 
-                            recommendation={result.recommendation} 
-                            databases={result.metadata.databases}
-                          />
+                    {/* Sub-Tab 5: Documentation Generator */}
+                    {reportsSubTab === 'Documentation' && result.documentation && (
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start animate-[fadeIn_0.3s_ease-out]">
+                        
+                        {/* Sub menu tabs */}
+                        <div className="lg:col-span-1 space-y-2 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-sm">
+                          {[
+                            { id: 'readme', label: 'README.md' },
+                            { id: 'architecture', label: 'Architecture Docs' },
+                            { id: 'folder_guide', label: 'Folder Guide' },
+                            { id: 'api_docs', label: 'API Reference' },
+                            { id: 'developer_docs', label: 'Developer Docs' },
+                            { id: 'environment_variables', label: 'Env Configs' },
+                            { id: 'setup_guide', label: 'Local Setup' }
+                          ].map((docTab) => (
+                            <button
+                              key={docTab.id}
+                              onClick={() => setDocSubTab(docTab.id)}
+                              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                docSubTab === docTab.id 
+                                  ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                  : 'text-slate-550 hover:bg-slate-50 hover:text-slate-800'
+                              }`}
+                            >
+                              {docTab.label}
+                            </button>
+                          ))}
                         </div>
-                        <div className="glass-panel p-5 rounded-2xl border border-slate-800/40 text-xs text-slate-400 leading-relaxed space-y-3">
-                          <div className="flex items-center gap-2 border-b border-slate-850 pb-2.5">
-                            <Layers className="w-4 h-4 text-blue-400" />
-                            <h4 className="font-extrabold text-white text-xs">Architectural Design Rules</h4>
-                          </div>
-                          <p>
-                            We classify your repository dependencies to design decoupled containers. 
-                          </p>
-                          <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-350">
-                            <li>App Runner fits standalone Docker-ready REST servers perfectly.</li>
-                            <li>Multi-container Docker Compose config setups map to ECS Fargate.</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Sub-Tab 3: Security */}
-                    {reportsSubTab === 'Security' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        <div className="lg:col-span-2">
-                          <ChecklistCard checklist={result.checklist} />
-                        </div>
-                        <div className="glass-panel p-5 rounded-2xl border border-slate-800/40 text-xs text-slate-400 leading-relaxed space-y-4">
-                          <div className="flex items-center gap-2 border-b border-slate-850 pb-2.5">
-                            <ShieldAlert className="w-4.5 h-4.5 text-amber-500" />
-                            <h4 className="font-extrabold text-white text-xs">Vulnerability Summary</h4>
+                        {/* Content viewer */}
+                        <div className="lg:col-span-3 bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm">
+                          <div className="flex justify-between items-center border-b border-slate-100 pb-3.5 mb-4">
+                            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                              Previewing {docSubTab.toUpperCase()} Documentation
+                            </span>
                           </div>
-                          <p>
-                            Your security rating is calculated dynamically based on package structures.
-                          </p>
-                          <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl space-y-2">
-                            <span className="text-[10px] font-bold text-rose-300 block uppercase">Warnings Audit</span>
-                            <p className="text-[11px] text-rose-200">
-                              Verify that database setups map connection links configuration-driven, and local uploads are replaced with stateless Amazon S3 storage buckets.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sub-Tab 4: Performance */}
-                    {reportsSubTab === 'Performance' && (
-                      <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6 max-w-3xl">
-                        <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
-                          <Zap className="w-5 h-5 text-yellow-400 animate-pulse" />
-                          <h4 className="text-sm font-bold text-white">Performance & Scaling Audit</h4>
-                        </div>
-                        <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
-                          <p>
-                            During static repository scanning, we audited framework files and database packages to evaluate horizontally-scaling readiness.
-                          </p>
                           
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
-                              <span className="text-xs font-bold text-white block">Concurrency Bottlenecks</span>
-                              <p className="text-[11px] text-slate-400">
-                                {result.metadata.databases.includes('SQLite')
-                                  ? "SQLite locks writes on scale. Recommend migrating databases to AWS RDS PostgreSQL or MySQL instances immediately."
-                                  : "None detected. Using external relational/NoSQL clients."}
-                              </p>
-                            </div>
-                            
-                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
-                              <span className="text-xs font-bold text-white block">Background Task Workers</span>
-                              <p className="text-[11px] text-slate-400">
-                                No heavy queue workers detected. For asynchronous/cron heavy operations, recommend adding Celery (Python) or BullMQ (Node) mapped to Amazon ElastiCache Redis.
-                              </p>
-                            </div>
-                          </div>
+                          <pre className="text-xs text-slate-600 leading-relaxed font-mono whitespace-pre-wrap max-h-[500px] overflow-y-auto pr-2 bg-slate-50/50 p-4 rounded-xl border border-slate-200/60">
+                            {result.documentation[docSubTab as keyof typeof result.documentation] || 'No content generated.'}
+                          </pre>
                         </div>
+
                       </div>
                     )}
 
-                    {/* Sub-Tab 5: AWS Topology */}
-                    {reportsSubTab === 'AWS Topology' && (
-                      <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6 max-w-3xl">
-                        <div className="flex items-center gap-2.5 border-b border-slate-850 pb-3.5">
-                          <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white">Recommended AWS Architecture Justification</h4>
-                            <p className="text-[10px] text-slate-500">DYNAMIC WEIGHTED MATRIX RATIONALE</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
-                          <div className="p-4 bg-slate-950/30 border border-slate-850 rounded-xl">
-                            <p>{result.recommendation.why}</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <span className="font-bold text-white">AWS Integration Checklist:</span>
-                            <ul className="list-decimal pl-5 space-y-1.5 text-[11px] text-slate-400">
-                              <li>Set up Amazon VPC networking with 2 public & 2 private subnets across 2 Availability Zones.</li>
-                              <li>Provision Amazon RDS {result.metadata.databases[0] || 'relational'} clusters if stateful storage is needed.</li>
-                              <li>Establish AWS Secrets Manager mappings for credentials injection on load.</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sub-Tab 6: Cost Analyzer */}
-                    {reportsSubTab === 'Cost Analyzer' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        <div className="lg:col-span-2 space-y-8">
-                          <CostCard recommendation={result.recommendation} />
-                          {result.cost_analysis && (
-                            <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 text-xs text-slate-350 leading-relaxed">
-                              <div className="space-y-3">
-                                {result.cost_analysis.split('\n\n').map((para: string, pIdx: number) => {
-                                  if (para.startsWith('### ')) {
-                                    return <h4 key={pIdx} className="text-sm font-bold text-white mt-4">{para.replace('### ', '')}</h4>;
-                                  }
-                                  if (para.startsWith('#### ')) {
-                                    return <h5 key={pIdx} className="font-semibold text-slate-200 text-xs mt-3">{para.replace('#### ', '')}</h5>;
-                                  }
-                                  if (para.startsWith('> ')) {
-                                    return (
-                                      <blockquote key={pIdx} className="border-l-2 border-blue-500 pl-4 text-slate-400 italic bg-blue-500/5 py-1 pr-2 rounded">
-                                        {para.replace('> [!NOTE]\n> ', '').replace('> ', '')}
-                                      </blockquote>
-                                    );
-                                  }
-                                  return <p key={pIdx}>{para}</p>;
-                                })}
+                    {/* Sub-Tab 6: Deployment Guide */}
+                    {reportsSubTab === 'DeploymentGuide' && result.deployment_guide && (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-[fadeIn_0.3s_ease-out]">
+                        
+                        {/* Hosting recommendations */}
+                        <div className="lg:col-span-1 space-y-6">
+                          <div className="p-5 bg-white border border-slate-200/60 rounded-2xl space-y-3.5 shadow-sm">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Hosting Recommendation</span>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600">
+                                <Terminal size={20} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-extrabold text-slate-800">
+                                  {result.deployment_guide.hosting_recommendation}
+                                </h4>
+                                <span className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mt-1 block">
+                                  Framework: {result.deployment_guide.framework_detected}
+                                </span>
                               </div>
                             </div>
-                          )}
-                        </div>
-
-                        {/* Cost Charts column */}
-                        <div className="space-y-6">
-                          <div className="glass-panel p-5 rounded-2xl border border-slate-800/40 space-y-4">
-                            <div className="flex items-center gap-2 border-b border-slate-850 pb-2.5">
-                              <DollarSign className="w-4.5 h-4.5 text-blue-400" />
-                              <h4 className="font-extrabold text-white text-xs uppercase tracking-wider">Pricing Breakdown</h4>
-                            </div>
-                            <CostDonut 
-                              compute={result.recommendation.cost_breakdown.compute}
-                              database={result.recommendation.cost_breakdown.database}
-                              storage={result.recommendation.cost_breakdown.storage}
-                              transfer={result.recommendation.cost_breakdown.data_transfer}
-                            />
                           </div>
 
-                          <ComputeCompareChart 
-                            recommendedTarget={result.recommendation.target}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sub-Tab 6: DevOps */}
-                    {reportsSubTab === 'DevOps' && result.devops_report && (
-                      <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6 max-w-3xl">
-                        <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
-                          <Layers className="w-5 h-5 text-indigo-400" />
-                          <h4 className="text-sm font-bold text-white">DevOps & CI/CD Review</h4>
-                        </div>
-                        <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
-                          <p>
-                            We audited the codebase CI/CD config structures to propose optimal deployment delivery tools.
-                          </p>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
-                              <span className="text-xs font-bold text-white block">Docker & Containerization</span>
-                              <p className="text-[11px] text-slate-400">
-                                {result.devops_report.docker_readiness 
-                                  ? "Dockerfile configurations found. Mapped to run container packages directly." 
-                                  : "Dockerfile missing. We recommend containerization to package environment runtimes."}
-                              </p>
+                          {/* required envs & secrets */}
+                          <div className="p-5 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                            <div>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Required Environment Variables</span>
                             </div>
-                            
-                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
-                              <span className="text-xs font-bold text-white block">CI/CD Pipeline Tools</span>
-                              <p className="text-[11px] text-slate-400 font-mono text-cyan-400">
-                                Mapped pipelines: {result.devops_report.cicd_tools.join(', ')}
-                              </p>
+                            <div className="space-y-2">
+                              {result.deployment_guide.environment_variables.map((env: string, idx: number) => (
+                                <span key={idx} className="inline-block px-2.5 py-1 rounded bg-slate-100 text-slate-655 font-mono text-[10px] mr-1.5 mb-1.5">
+                                  {env}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-2">Required Secrets</span>
+                              <div className="space-y-2">
+                                {result.deployment_guide.required_secrets.map((sec: string, idx: number) => (
+                                  <span key={idx} className="inline-block px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-100 font-mono text-[10px] mr-1.5 mb-1.5">
+                                    {sec}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Commands and Troubleshooting */}
+                        <div className="lg:col-span-2 space-y-6">
+                          <div className="bg-white border border-slate-200/60 rounded-2xl p-6 space-y-4 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Build and Run Commands</h4>
+                            <div className="space-y-2.5 text-xs">
+                              {result.deployment_guide.build_commands.map((cmd: string, idx: number) => (
+                                <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-blue-600 flex items-center justify-between">
+                                  <span>{cmd}</span>
+                                  <span className="text-[8px] bg-slate-200 text-slate-500 font-extrabold px-1.5 py-0.5 rounded">BUILD</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
 
-                          <div className="space-y-2 pt-2">
-                            <span className="font-bold text-white">DevOps recommendations:</span>
-                            <ul className="list-decimal pl-5 space-y-1 text-slate-400">
-                              {result.devops_report.missing_devops_tooling.map((tool: string, idx: number) => (
-                                <li key={idx}>{tool}</li>
+                          <div className="bg-white border border-slate-200/60 rounded-2xl p-6 space-y-4 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Deployment Troubleshooting Guide</h4>
+                            <div className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap p-4 bg-slate-50 rounded-xl border border-slate-200/60 font-mono">
+                              {result.deployment_guide.troubleshooting_guide}
+                            </div>
+                          </div>
+
+                          <div className="bg-white border border-slate-200/60 rounded-2xl p-6 space-y-3 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Common Deployment Errors to Avoid</h4>
+                            <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-500">
+                              {result.deployment_guide.common_deployment_errors.map((err: string, idx: number) => (
+                                <li key={idx}>{err}</li>
                               ))}
                             </ul>
                           </div>
                         </div>
+
                       </div>
                     )}
 
-                    {/* Sub-Tab 7: IaC Deployment */}
-                    {reportsSubTab === 'IaC Deployment' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    {/* Sub-Tab 7: Cost Analyzer */}
+                    {reportsSubTab === 'Cost' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-[fadeIn_0.3s_ease-out]">
                         
-                        {/* LEFT COLUMN: BLUEPRINTS GENERATOR */}
-                        <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6">
-                          <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
-                            <Layers className="w-5 h-5 text-blue-400" />
-                            <h4 className="text-sm font-bold text-white">1. Terraform IaC Blueprints</h4>
+                        <div className="lg:col-span-2 space-y-6">
+                          <div className="p-6 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">AWS Cost Estimations Detail</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                              Estimations are calculated dynamically based on stack complexity:
+                            </p>
+                            <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl text-xs text-slate-600 leading-relaxed font-mono whitespace-pre-wrap">
+                              {result.cost_analysis || 'No detailed cost assumptions provided.'}
+                            </div>
                           </div>
-
-                          {viewMode === 'infrastructure' ? (
-                            <div className="space-y-6">
-                              <ProgressPanel 
-                                logs={infra.logs} 
-                                progress={infra.progress} 
-                                status={infra.status} 
-                              />
-
-                              {infra.status === 'completed' && (
-                                <div className="space-y-6">
-                                  <InfrastructurePreview 
-                                    files={infra.generatedFiles} 
-                                    downloadUrl={infra.downloadUrl} 
-                                    generationId={infra.generationId}
-                                  />
-                                  <ValidationReportCard 
-                                    score={infra.validationScore} 
-                                    results={infra.validationResults} 
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8 space-y-5">
-                              <p className="text-xs text-slate-400 leading-relaxed">
-                                Generate structured VPC subnets, routing configuration, security groups, and database hosting infrastructure files for offline auditing.
-                              </p>
-                              <button 
-                                onClick={() => {
-                                  setViewMode('infrastructure');
-                                  infra.startGeneration(result.repository_url);
-                                }}
-                                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-750 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md mx-auto"
-                              >
-                                ⚡ Generate Terraform Blueprints
-                              </button>
-                            </div>
-                          )}
                         </div>
 
-                        {/* RIGHT COLUMN: LIVE DEPLOY MVP */}
-                        <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6">
-                          <div className="flex items-center gap-2 border-b border-slate-850 pb-3 justify-between">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="w-5 h-5 text-emerald-400" />
-                              <h4 className="text-sm font-bold text-white">2. CloudPilot Live Deploy</h4>
-                            </div>
-                            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-extrabold px-2 py-0.5 rounded border border-emerald-500/10 uppercase tracking-wider">
-                              AWS App Runner MVP
-                            </span>
+                        {/* Cost breakdown charts */}
+                        <div className="space-y-6">
+                          <div className="p-5 bg-white border border-slate-200/60 rounded-2xl space-y-4 shadow-sm">
+                            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Monthly Spend Breakdown</h4>
+                            <CostDonut 
+                              compute={result.recommendation?.cost_breakdown?.compute || 0}
+                              database={result.recommendation?.cost_breakdown?.database || 0}
+                              storage={result.recommendation?.cost_breakdown?.storage || 0}
+                              transfer={result.recommendation?.cost_breakdown?.data_transfer || 0}
+                            />
                           </div>
 
-                          {/* IDLE STATE: AWS CONFIG & REVIEW */}
-                          {deployStatus === 'idle' && (
-                            <div className="space-y-6">
-                              {/* AWS Credentials Connection form */}
-                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-4">
-                                <span className="text-xs font-bold text-white block">AWS Account Connection</span>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] text-slate-450 font-bold">AWS Access Key ID</label>
-                                    <input 
-                                      type="password" 
-                                      value={awsAccessKey}
-                                      onChange={(e) => setAwsAccessKey(e.target.value)}
-                                      placeholder="AKIA..."
-                                      className="glass-input px-3 py-1.5 rounded-lg text-xs"
-                                    />
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-[10px] text-slate-450 font-bold">AWS Secret Access Key</label>
-                                    <input 
-                                      type="password" 
-                                      value={awsSecretKey}
-                                      onChange={(e) => setAwsSecretKey(e.target.value)}
-                                      placeholder="Secret Key"
-                                      className="glass-input px-3 py-1.5 rounded-lg text-xs"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                  <div className="flex flex-col gap-1 flex-1">
-                                    <label className="text-[10px] text-slate-400 font-bold">AWS Deployment Region</label>
-                                    <select 
-                                      value={awsRegionSelect}
-                                      onChange={(e) => setAwsRegionSelect(e.target.value)}
-                                      className="glass-input px-3 py-1.5 rounded-lg text-xs bg-slate-900 border border-slate-800"
-                                    >
-                                      <option value="ap-south-1">ap-south-1 (Mumbai)</option>
-                                      <option value="us-east-1">us-east-1 (N. Virginia)</option>
-                                      <option value="us-west-2">us-west-2 (Oregon)</option>
-                                      <option value="eu-west-1">eu-west-1 (Ireland)</option>
-                                    </select>
-                                  </div>
-                                  <button
-                                    onClick={handleVerifyAWS}
-                                    disabled={verifyingAws || !awsAccessKey || !awsSecretKey}
-                                    className="px-4 py-2 mt-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                  >
-                                    {verifyingAws ? "Verifying..." : "Verify Keys"}
-                                  </button>
-                                </div>
-
-                                {awsVerifyMessage && (
-                                  <div className={`text-[10px] p-2 rounded ${awsVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                    {awsVerifyMessage}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Deployment Review details */}
-                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-3">
-                                <span className="text-xs font-bold text-white block">Deployment Specifications Review</span>
-                                
-                                <div className="space-y-2 text-xs">
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-slate-400">Target Service</span>
-                                    <span className="font-bold text-slate-200">AWS App Runner</span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-slate-400">Estimated Cost</span>
-                                    <span className="font-bold text-blue-400">
-                                      ${result?.recommendation?.estimated_monthly_cost?.toFixed(2) || '35.86'} / month
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-slate-400">Resources to create</span>
-                                    <span className="font-mono text-cyan-400">aws_apprunner_service.app</span>
-                                  </div>
-                                  <div className="flex flex-col gap-1.5 pt-2">
-                                    <label className="text-[10px] text-slate-450 font-bold">AWS App Runner Service Name</label>
-                                    <input 
-                                      type="text" 
-                                      value={serviceNameInput}
-                                      onChange={(e) => setServiceNameInput(e.target.value)}
-                                      placeholder="Service identifier"
-                                      className="glass-input px-3 py-2 rounded-xl text-xs"
-                                    />
-                                  <div className="flex flex-col gap-1.5 pt-2">
-                                    <label className="text-[10px] text-slate-455 font-bold">AWS App Runner Connection ARN (GitHub Auth)</label>
-                                    <input 
-                                      type="text" 
-                                      value={awsConnectionArn}
-                                      onChange={(e) => setAwsConnectionArn(e.target.value)}
-                                      placeholder="arn:aws:apprunner:region:account:connection/name"
-                                      className="glass-input px-3 py-2 rounded-xl text-xs"
-                                    />
-                                    <span className="text-[9px] text-slate-500 leading-normal block">
-                                      Used to link GitHub. Create a Connection in your AWS Console (App Runner &gt; Connections &gt; Create Connection).
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={handleTriggerDeploy}
-                                disabled={!awsVerified || triggeringDeploy || !serviceNameInput || !awsConnectionArn}
-                                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-emerald-500/10"
-                              >
-                                {triggeringDeploy ? "Triggering..." : "🚀 Confirm & Deploy Live"}
-                              </button>
-                            </div>
-                          )}
-
-                          {/* ACTIVE DEPLOYING / STREAMING STATE */}
-                          {(deployStatus === 'deploying' || deployStatus === 'destroying') && (
-                            <div className="space-y-6">
-                              <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/15 rounded-xl text-blue-300 text-xs">
-                                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                                <span>
-                                  {deployStatus === 'deploying' 
-                                    ? "Deployment is active. Coordinated agents executing Terraform commands..." 
-                                    : "Decommissioning App Runner infrastructure..."}
-                                </span>
-                              </div>
-
-                              <div className="space-y-4">
-                                {deployLogs.map((log, idx) => (
-                                  <div key={idx} className="flex justify-between items-center text-xs">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-2 h-2 rounded-full ${
-                                        log.status === 'completed' ? 'bg-emerald-500' : log.status === 'in_progress' ? 'bg-blue-500 animate-ping' : 'bg-slate-700'
-                                      }`} />
-                                      <span className="font-semibold text-slate-300">{log.stage}</span>
-                                    </div>
-                                    <span className="text-[10px] text-slate-500">{log.message}</span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Beautiful Console Output */}
-                              <div className="space-y-2 pt-2 border-t border-slate-900/50">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Live Console Output</span>
-                                <div className="p-4 bg-black/90 border border-slate-800/80 rounded-xl font-mono text-[10px] text-emerald-400/90 max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
-                                  {deployConsole.length === 0 ? (
-                                    <div className="text-slate-500 italic">Initializing console stream...</div>
-                                  ) : (
-                                    deployConsole.map((line, idx) => (
-                                      <div key={idx} className="leading-relaxed break-all whitespace-pre-wrap">{line}</div>
-                                    ))
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* COMPLETED SUCCESS RESULTS */}
-                          {deployStatus === 'completed' && (
-                            <div className="space-y-6">
-                              <div className="flex items-center gap-2.5 p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-xl text-emerald-400 text-xs">
-                                <CheckCircle2 className="w-5 h-5 shrink-0" />
-                                <div>
-                                  <span className="font-bold block">AWS Deployment Finalized Successfully!</span>
-                                  <span className="text-[10px] text-slate-400 mt-1 block">Live App URL is active and listening for web request pings.</span>
-                                </div>
-                              </div>
-
-                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-3 text-xs leading-relaxed">
-                                <div className="flex justify-between items-center border-b border-slate-850 pb-2">
-                                  <span className="text-slate-400">Live Application URL</span>
-                                  <a 
-                                    href={liveUrl || '#'} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="font-bold text-cyan-400 hover:underline"
-                                  >
-                                    Visit Application
-                                  </a>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400">AWS Resources created</span>
-                                  <span className="font-mono text-[10px] text-slate-300">aws_apprunner_service.app</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400">Total deployment duration</span>
-                                  <span className="font-semibold text-slate-200">{deployDuration} seconds</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-400">Estimated billing tier</span>
-                                  <span className="font-extrabold text-blue-400">
-                                    ${result?.recommendation?.estimated_monthly_cost?.toFixed(2) || '35.86'} / mo (USD)
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <button
-                                  onClick={() => setDeployStatus('idle')}
-                                  className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white text-xs font-bold transition-all cursor-pointer text-center"
-                                >
-                                  Redeploy service
-                                </button>
-                                <button
-                                  onClick={handleDestroyDeploy}
-                                  className="py-2.5 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 border border-rose-600/20 text-rose-400 text-xs font-bold transition-all cursor-pointer text-center"
-                                >
-                                  Destroy resources
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* FAILURE RESULTS */}
-                          {deployStatus === 'failed' && (
-                            <div className="space-y-6">
-                              <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/15 rounded-xl text-rose-300 text-xs">
-                                <AlertCircle className="w-5 h-5 shrink-0" />
-                                <span className="font-bold">AWS Deployment Failed. Audit logs below.</span>
-                              </div>
-
-                              {/* Beautiful Console Output for failure audit */}
-                              <div className="space-y-2">
-                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Audit Console Logs</span>
-                                <div className="p-4 bg-black/90 border border-slate-800 rounded-xl font-mono text-[10px] text-rose-300/90 max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
-                                  {deployConsole.length === 0 ? (
-                                    <div className="text-slate-500 italic">No console logs available.</div>
-                                  ) : (
-                                    deployConsole.map((line, idx) => (
-                                      <div key={idx} className="leading-relaxed break-all whitespace-pre-wrap">{line}</div>
-                                    ))
-                                  )}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => setDeployStatus('idle')}
-                                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
-                              >
-                                Try Deploy again
-                              </button>
-                            </div>
-                          )}
-
-                          {/* DESTROYED STATE */}
-                          {deployStatus === 'destroyed' && (
-                            <div className="space-y-6 text-center py-6">
-                              <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 border border-slate-850 mx-auto">
-                                <AlertCircle className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-bold text-white">Infrastructure Decommissioned</h4>
-                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
-                                  All App Runner deployment environments and variables configurations were successfully destroyed from AWS.
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => setDeployStatus('idle')}
-                                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
-                              >
-                                Deploy New Environment
-                              </button>
-                            </div>
-                          )}
-                          {/* DEPLOYMENT HISTORY LIST PANEL */}
-                          {deployHistory.length > 0 && (
-                            <div className="pt-4 border-t border-slate-850 space-y-3">
-                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Deployment History</span>
-                              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                {deployHistory.map((dep, idx) => (
-                                  <div key={idx} className="p-2.5 bg-slate-950/20 border border-slate-900/50 rounded-lg flex justify-between items-center text-[10px]">
-                                    <div>
-                                      <span className="font-bold text-slate-350 block">{dep.service_name || dep.repo_name}</span>
-                                      <span className="text-slate-500 text-[9px]">{dep.region} &middot; {new Date(dep.timestamp).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {dep.status === 'completed' && (
-                                        <a href={dep.url} target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">
-                                          Link
-                                        </a>
-                                      )}
-                                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold border ${
-                                        dep.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : dep.status === 'failed' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
-                                      }`}>
-                                        {dep.status.toUpperCase()}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
+                          <ComputeCompareChart recommendedTarget={result.recommendation?.target || 'AWS App Runner'} />
                         </div>
 
                       </div>
                     )}
 
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* TAB 3: AI CONSULTANT */}
               {activeTab === 'AI consultant' && result && (
-                <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-8"
+                >
                   <AIConsultantChat result={result} taskId={taskId || ''} />
-                </div>
+                </motion.div>
               )}
 
               {/* TAB 4: SETTINGS */}
               {activeTab === 'Settings' && (
-                <div className="glass-panel p-6 rounded-2xl max-w-xl mx-auto border border-slate-800/40 space-y-6 animate-[fadeIn_0.4s_ease-out]">
-                  <div className="border-b border-slate-800/40 pb-4">
-                    <h3 className="text-base font-bold text-white">Settings & Credentials</h3>
-                    <p className="text-[10px] text-slate-500 mt-1">Configure API integrations and credentials overrides.</p>
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-6 bg-white rounded-3xl max-w-xl mx-auto border border-slate-200/60 space-y-6 shadow-sm"
+                >
+                  <div className="border-b border-slate-100 pb-4">
+                    <h3 className="text-base font-bold text-slate-800">Settings & Key Override</h3>
+                    <p className="text-[10px] text-slate-450 mt-1">Configure integrations keys for repository indexing.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">OpenAI API Key</label>
+                      <label className="text-xs font-semibold text-slate-600">OpenAI API Key</label>
                       <input 
                         type="password" 
                         value={apiKey} 
                         onChange={(e) => setApiKey(e.target.value)}
-                        className="glass-input px-4 py-2 rounded-xl text-xs"
+                        className="glass-input px-4 py-2.5 rounded-xl text-xs"
+                        placeholder="sk-..."
                       />
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-400">Default AWS Deployment Region</label>
-                      <select 
-                        value={awsRegion} 
-                        onChange={(e) => setAwsRegion(e.target.value)}
-                        className="glass-input px-4 py-2 rounded-xl text-xs bg-slate-900 border border-slate-800"
-                      >
-                        <option value="us-east-1">us-east-1 (N. Virginia)</option>
-                        <option value="us-west-2">us-west-2 (Oregon)</option>
-                        <option value="eu-west-1">eu-west-1 (Ireland)</option>
-                        <option value="ap-south-1">ap-south-1 (Mumbai)</option>
-                      </select>
-                    </div>
-
-                    <button className="w-full mt-4 py-2.5 rounded-xl btn-primary text-xs cursor-pointer" onClick={handleSaveSettings}>
+                    <button 
+                      className="w-full mt-4 py-2.5 rounded-xl btn-primary text-xs cursor-pointer" 
+                      onClick={handleSaveSettings}
+                    >
                       Save Settings
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
-            </>
+            </AnimatePresence>
           )}
 
         </main>
@@ -1292,12 +1040,5 @@ function App() {
     </div>
   );
 }
-
-// Simple local RefreshCw SVG placeholder icon to avoid any import issues
-const RefreshCwIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3-3-3" />
-  </svg>
-);
 
 export default App;

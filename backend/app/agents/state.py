@@ -41,3 +41,11 @@ class AnalyzerState(TypedDict, total=False):
     deploy_report: Optional[Dict[str, Any]]
     monitoring_report: Optional[Dict[str, Any]]
     cost_optimization_report: Optional[Dict[str, Any]]
+    
+    # New AI GitHub Engineer fields
+    bugs: Optional[List[Dict[str, Any]]]
+    security_issues: Optional[List[Dict[str, Any]]]
+    performance_issues: Optional[List[Dict[str, Any]]]
+    documentation: Optional[Dict[str, Any]]
+    deployment_guide: Optional[Dict[str, Any]]
+

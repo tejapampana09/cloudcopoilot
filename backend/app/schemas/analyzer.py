@@ -73,6 +73,47 @@ class AgentLog(BaseModel):
     timestamp: str
     status: str  # 'pending' | 'in_progress' | 'completed' | 'failed'
 
+class FixSuggestion(BaseModel):
+    problem: str
+    reason: str
+    impact: str
+    affected_files: List[str]
+    suggested_solution: str
+    example_code: str
+    confidence_score: int
+
+class SecurityIssue(BaseModel):
+    issue_type: str
+    severity: str  # Critical, High, Medium, Low
+    description: str
+    affected_files: List[str]
+    suggested_fix: str
+
+class PerformanceIssue(BaseModel):
+    issue_type: str
+    severity: str
+    description: str
+    affected_files: List[str]
+    suggested_fix: str
+
+class DocumentationSection(BaseModel):
+    readme: str
+    architecture: str
+    folder_guide: str
+    api_docs: str
+    developer_docs: str
+    environment_variables: str
+    setup_guide: str
+
+class DeploymentGuide(BaseModel):
+    framework_detected: str
+    hosting_recommendation: str
+    build_commands: List[str]
+    environment_variables: List[str]
+    required_secrets: List[str]
+    troubleshooting_guide: str
+    common_deployment_errors: List[str]
+
 class AnalysisResult(BaseModel):
     repository_url: str
     repository_name: str
@@ -101,3 +142,11 @@ class AnalysisResult(BaseModel):
     deploy_report: Optional[Dict[str, Any]] = None
     monitoring_report: Optional[Dict[str, Any]] = None
     cost_optimization_report: Optional[Dict[str, Any]] = None
+    
+    # New AI GitHub Engineer fields
+    bugs: List[FixSuggestion] = Field(default_factory=list)
+    security_issues: List[SecurityIssue] = Field(default_factory=list)
+    performance_issues: List[PerformanceIssue] = Field(default_factory=list)
+    documentation: Optional[DocumentationSection] = None
+    deployment_guide: Optional[DeploymentGuide] = None
+
