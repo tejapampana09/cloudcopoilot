@@ -8,16 +8,16 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   resultLoaded: boolean;
+  currentUser?: any;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, resultLoaded }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, resultLoaded, currentUser }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentWorkspace, setCurrentWorkspace] = useState('tejapampana09/cloudcopoilot');
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
 
   const workspaces = [
     'tejapampana09/cloudcopoilot',
-    'srikar-reddy/personal-app',
     'cloudpilot-demo/staging-env'
   ];
 
@@ -185,15 +185,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, result
       }`}>
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-cyan-500/5 border border-cyan-400/20 shrink-0">
-            SR
+            {currentUser?.email?.substring(0, 2).toUpperCase() || 'CP'}
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-slate-200 truncate leading-none">
-                Srikar Reddy
+                {currentUser?.email?.split('@')[0] || 'User'}
               </span>
               <span className="text-[10px] text-slate-500 truncate mt-1">
-                srikar@example.com
+                {currentUser?.email || 'user@example.com'}
               </span>
             </div>
           )}

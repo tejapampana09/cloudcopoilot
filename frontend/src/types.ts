@@ -93,6 +93,7 @@ export interface AnalysisResult {
   cost_report?: any;
   devops_report?: any;
   executive_summary?: any;
+  production_ready_prompt?: string;
   overall_repository_score?: number;
   overall_cloud_readiness_score?: number;
 }

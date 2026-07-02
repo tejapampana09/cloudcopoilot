@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, FileCode2, Copy, Check, Download } from 'lucide-react';
+import { FolderOpen, FileCode2, Copy, Check, Download, Sparkles, Loader2 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface InfrastructurePreviewProps {
   files: { [path: string]: string };
   downloadUrl: string | null;
+  generationId: string | null;
 }
 
-export const InfrastructurePreview: React.FC<InfrastructurePreviewProps> = ({ files, downloadUrl }) => {
+export const InfrastructurePreview: React.FC<InfrastructurePreviewProps> = ({ files, downloadUrl, generationId }) => {
   const filePaths = Object.keys(files);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
+  const [applying, setApplying] = useState<boolean>(false);
 
   // Automatically select the first file initially
   useEffect(() => {
@@ -25,6 +28,19 @@ export const InfrastructurePreview: React.FC<InfrastructurePreviewProps> = ({ fi
     navigator.clipboard.writeText(files[selectedFile]);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleApplyToWorkspace = async () => {
+    if (!generationId) return;
+    setApplying(true);
+    try {
+      const res = await api.applyInfrastructureToWorkspace(generationId);
+      alert(res.message || "Successfully applied configurations directly to your local project workspace!");
+    } catch (err: any) {
+      alert(err.message || "Failed to apply configurations to workspace.");
+    } finally {
+      setApplying(false);
+    }
   };
 
   const fileContent = selectedFile ? files[selectedFile] : '';
@@ -43,17 +59,40 @@ export const InfrastructurePreview: React.FC<InfrastructurePreviewProps> = ({ fi
           </span>
         </div>
         
-        {/* Download ZIP button */}
-        {downloadUrl && (
-          <a
-            href={downloadUrl}
-            download
-            className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
-          >
-            <Download size={13} />
-            Download Deploy ZIP
-          </a>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Apply to workspace button */}
+          {generationId && (
+            <button
+              onClick={handleApplyToWorkspace}
+              disabled={applying}
+              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer border border-emerald-500/10"
+            >
+              {applying ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Applying...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} />
+                  <span>Apply to Local Project</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Download ZIP button */}
+          {downloadUrl && (
+            <a
+              href={downloadUrl}
+              download
+              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+            >
+              <Download size={13} />
+              Download Deploy ZIP
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 min-h-[450px]">

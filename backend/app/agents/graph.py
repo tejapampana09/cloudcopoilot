@@ -5,7 +5,7 @@ import datetime
 from typing import List, Dict, Any
 from langgraph.graph import StateGraph, END
 
-from app.core.config import settings
+from app.core.config import settings, get_chat_llm
 from app.agents.state import AnalyzerState
 from app.services.git_service import GitService
 from app.services.scanner import HeuristicScanner
@@ -16,6 +16,7 @@ from app.architecture.architecture_analyzer import ArchitectureAnalyzer
 from app.reasoning.reasoning_engine import ReasoningEngine
 from app.recommendations.aws_decision_engine import AWSDecisionEngine
 from app.reports.report_generator import ReportGenerator
+from app.services.production_prompt_service import build_production_ready_prompt
 from app.schemas.architecture import (
     ArchitectureSummary, AWSRecommendationDetail, TechnologyAnalysis,
     RepositoryContext, VisualizationJSON
@@ -168,7 +169,7 @@ def architecture_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Infrastructure Agent", "Activating Architecture Agent...", "in_progress")
+    add_agent_log(task_id, "Architecture Agent", "Activating Architecture Agent...", "in_progress")
     try:
         # Build Context
         repository_context = RepositoryContextBuilder.build(
@@ -191,13 +192,13 @@ def architecture_agent_node(state: AnalyzerState) -> AnalyzerState:
 
         add_agent_log(
             task_id,
-            "Infrastructure Agent",
+            "Architecture Agent",
             f"Architecture Agent complete. Layer boundaries identified.",
             "completed"
         )
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Infrastructure Agent", f"Architecture analysis failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Architecture Agent", f"Architecture analysis failed: {str(e)}", "failed")
     return state
 
 
@@ -207,7 +208,7 @@ def security_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Deployment Agent", "Activating Security Agent...", "in_progress")
+    add_agent_log(task_id, "Security Agent", "Activating Security Agent...", "in_progress")
     try:
         metadata = state['metadata']
         
@@ -230,10 +231,10 @@ def security_agent_node(state: AnalyzerState) -> AnalyzerState:
             ChecklistItem(label="Docker Container Isolation", status="checked" if metadata.docker_readiness else "warning")
         ]
         
-        add_agent_log(task_id, "Deployment Agent", f"Security Agent complete. Security Score: {sec_score}/100.", "completed")
+        add_agent_log(task_id, "Security Agent", f"Security Agent complete. Security Score: {sec_score}/100.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Deployment Agent", f"Security analysis failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Security Agent", f"Security analysis failed: {str(e)}", "failed")
     return state
 
 
@@ -243,7 +244,7 @@ def performance_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Deployment Agent", "Activating Performance Agent...", "in_progress")
+    add_agent_log(task_id, "Performance Agent", "Activating Performance Agent...", "in_progress")
     try:
         metadata = state['metadata']
         
@@ -259,10 +260,10 @@ def performance_agent_node(state: AnalyzerState) -> AnalyzerState:
         }
         
         state['performance_notes'] = "SQLite write locking bottlenecks concurrency." if "SQLite" in metadata.databases else "No database concurrency bottlenecks detected."
-        add_agent_log(task_id, "Deployment Agent", "Performance Agent complete. Caching opportunities computed.", "completed")
+        add_agent_log(task_id, "Performance Agent", "Performance Agent complete. Caching opportunities computed.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Deployment Agent", f"Performance analysis failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Performance Agent", f"Performance analysis failed: {str(e)}", "failed")
     return state
 
 
@@ -272,7 +273,7 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Infrastructure Agent", "Activating Cloud Architect Agent...", "in_progress")
+    add_agent_log(task_id, "Cloud Architect Agent", "Activating Cloud Architect Agent...", "in_progress")
     try:
         # weighted decision Matrix
         primary_target, aws_recommendations, confidence = AWSDecisionEngine.evaluate(
@@ -306,10 +307,10 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
         }
         
         state['deployment_strategy'] = f"Adopt {primary_target} with an IaC-driven CI/CD pipeline."
-        add_agent_log(task_id, "Infrastructure Agent", f"Cloud Architect Agent complete. Selected target: {primary_target}.", "completed")
+        add_agent_log(task_id, "Cloud Architect Agent", f"Cloud Architect Agent complete. Selected target: {primary_target}.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Infrastructure Agent", f"Cloud Architect Agent failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Cloud Architect Agent", f"Cloud Architect Agent failed: {str(e)}", "failed")
     return state
 
 
@@ -319,7 +320,7 @@ def aws_cost_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Deployment Agent", "Activating AWS Cost Agent...", "in_progress")
+    add_agent_log(task_id, "Cost Agent", "Activating AWS Cost Agent...", "in_progress")
     try:
         rec = state['recommendation']
         complexity = state['repository_context'].project_complexity
@@ -348,10 +349,10 @@ def aws_cost_agent_node(state: AnalyzerState) -> AnalyzerState:
             ]
         }
         
-        add_agent_log(task_id, "Deployment Agent", f"AWS Cost Agent complete. Est monthly spend: ${est_cost:.2f}.", "completed")
+        add_agent_log(task_id, "Cost Agent", f"AWS Cost Agent complete. Est monthly spend: ${est_cost:.2f}.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Deployment Agent", f"Cost analysis failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Cost Agent", f"Cost analysis failed: {str(e)}", "failed")
     return state
 
 
@@ -361,7 +362,7 @@ def devops_agent_node(state: AnalyzerState) -> AnalyzerState:
         return state
         
     task_id = state['task_id']
-    add_agent_log(task_id, "Deployment Agent", "Activating DevOps Agent...", "in_progress")
+    add_agent_log(task_id, "DevOps Agent", "Activating DevOps Agent...", "in_progress")
     try:
         metadata = state['metadata']
         
@@ -376,10 +377,10 @@ def devops_agent_node(state: AnalyzerState) -> AnalyzerState:
             ]
         }
         
-        add_agent_log(task_id, "Deployment Agent", "DevOps Agent complete. DevOps audits recorded.", "completed")
+        add_agent_log(task_id, "DevOps Agent", "DevOps Agent complete. DevOps audits recorded.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Deployment Agent", f"DevOps agent failed: {str(e)}", "failed")
+        add_agent_log(task_id, "DevOps Agent", f"DevOps agent failed: {str(e)}", "failed")
     return state
 
 
@@ -460,7 +461,7 @@ def cost_optimization_agent_node(state: AnalyzerState) -> AnalyzerState:
     if state.get('error'):
         return state
     task_id = state['task_id']
-    add_agent_log(task_id, "Deployment Agent", "Activating Cost Optimization Agent...", "in_progress")
+    add_agent_log(task_id, "Cost Optimization Agent", "Activating Cost Optimization Agent...", "in_progress")
     try:
         rec = state['recommendation']
         complexity = state['repository_context'].project_complexity if state.get('repository_context') else 'Medium'
@@ -497,10 +498,10 @@ def cost_optimization_agent_node(state: AnalyzerState) -> AnalyzerState:
             ],
             "potential_savings": float(est_cost) * 0.35
         }
-        add_agent_log(task_id, "Deployment Agent", "Cost optimization options mapped by Cost Optimization Agent.", "completed")
+        add_agent_log(task_id, "Cost Optimization Agent", "Cost optimization options mapped by Cost Optimization Agent.", "completed")
     except Exception as e:
         state['error'] = str(e)
-        add_agent_log(task_id, "Deployment Agent", f"Cost Optimization Agent failed: {str(e)}", "failed")
+        add_agent_log(task_id, "Cost Optimization Agent", f"Cost Optimization Agent failed: {str(e)}", "failed")
     return state
 
 
@@ -544,7 +545,7 @@ def executive_summary_agent_node(state: AnalyzerState) -> AnalyzerState:
     api_key = settings.OPENAI_API_KEY
     if HAS_LANGCHAIN and api_key:
         try:
-            llm = ChatOpenAI(
+            llm = get_chat_llm(
                 api_key=api_key,
                 model_name=settings.OPENAI_MODEL,
                 temperature=0.2,
@@ -600,6 +601,13 @@ def executive_summary_agent_node(state: AnalyzerState) -> AnalyzerState:
     else:
         state['ai_summary'] = generate_heuristic_summary(metadata, rec.target, state['owner'], state['repo_name'])
         
+    production_prompt = build_production_ready_prompt(
+        metadata=metadata,
+        recommendation=rec,
+        owner=state['owner'],
+        repo_name=state['repo_name'],
+    )
+
     state['executive_summary'] = {
         "summary": state['ai_summary'],
         "overall_health_score": health_score,
@@ -610,11 +618,12 @@ def executive_summary_agent_node(state: AnalyzerState) -> AnalyzerState:
         "action_plan": [
             "Deploy Terraform modules inside subnets boundary",
             "Link CI/CD pipeline triggers directly to hosting targets"
-        ]
+        ],
+        "production_ready_prompt": production_prompt,
     }
     
     # Build reports
-    reasons_list = state['reasoning'].split("\n") if state['reasoning'] else []
+    reasons_list = state.get('reasoning', '').split("\n") if state.get('reasoning') else []
     state['architecture_report'] = ReportGenerator.build_report(
         metadata=metadata,
         architecture=state['architecture_analysis'],
@@ -693,9 +702,16 @@ def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[
     # Add initial logs to task
     add_agent_log(task_id, "Planner Agent", "Workflow initialized.", "pending")
     add_agent_log(task_id, "Repository Analyzer", "Waiting to scan code...", "pending")
-    add_agent_log(task_id, "Infrastructure Agent", "Waiting to analyze infrastructure...", "pending")
-    add_agent_log(task_id, "Deployment Agent", "Waiting to assess deployment readiness...", "pending")
-    add_agent_log(task_id, "Monitoring Agent", "Waiting to summarize...", "pending")
+    add_agent_log(task_id, "Architecture Agent", "Waiting to analyze architecture...", "pending")
+    add_agent_log(task_id, "Security Agent", "Waiting to check security...", "pending")
+    add_agent_log(task_id, "Performance Agent", "Waiting to audit performance...", "pending")
+    add_agent_log(task_id, "Cloud Architect Agent", "Waiting to select AWS target...", "pending")
+    add_agent_log(task_id, "Infrastructure Agent", "Waiting to compile infrastructure...", "pending")
+    add_agent_log(task_id, "Deployment Agent", "Waiting to plan deployment...", "pending")
+    add_agent_log(task_id, "Monitoring Agent", "Waiting to configure monitoring...", "pending")
+    add_agent_log(task_id, "Cost Agent", "Waiting to estimate costs...", "pending")
+    add_agent_log(task_id, "DevOps Agent", "Waiting to audit DevOps...", "pending")
+    add_agent_log(task_id, "Cost Optimization Agent", "Waiting to map savings...", "pending")
     
     try:
         # Run graph
@@ -752,6 +768,7 @@ def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[
         task_data['performance_notes'] = final_state.get('performance_notes')
         task_data['cost_analysis'] = final_state.get('cost_analysis')
         task_data['deployment_strategy'] = final_state.get('deployment_strategy')
+        task_data['production_ready_prompt'] = final_state.get('executive_summary', {}).get('production_ready_prompt') if final_state.get('executive_summary') else None
         analysis_tasks[task_id] = task_data
         return analysis_tasks[task_id]
         

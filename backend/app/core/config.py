@@ -37,3 +37,26 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+def get_chat_llm(api_key: str, model_name: str, **kwargs):
+    """
+    Helper to instantiate ChatOpenAI, automatically routing to OpenRouter 
+    if the API key is an OpenRouter key (starts with 'sk-or-').
+    """
+    from langchain_openai import ChatOpenAI
+    if api_key and api_key.startswith("sk-or-"):
+        base_url = "https://openrouter.ai/api/v1"
+        if "/" not in model_name:
+            model_name = f"openai/{model_name}"
+        return ChatOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            model_name=model_name,
+            **kwargs
+        )
+    return ChatOpenAI(
+        api_key=api_key,
+        model_name=model_name,
+        **kwargs
+    )
+

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
 from sse_starlette.sse import EventSourceResponse
 
-from app.core.config import settings
+from app.core.config import settings, get_chat_llm
 from app.schemas.analyzer import AnalyzeRequest, AnalyzeResponse
 from app.agents.graph import run_analysis_pipeline
 from app.utils.helpers import analysis_tasks
@@ -219,7 +219,7 @@ async def chat_with_repository(request: ChatRequest, current_user: User = Depend
             if not settings.OPENAI_API_KEY:
                 return "OpenAI API key not configured."
                 
-            llm = ChatOpenAI(
+            llm = get_chat_llm(
                 api_key=settings.OPENAI_API_KEY,
                 model_name=settings.OPENAI_MODEL,
                 temperature=0.2,

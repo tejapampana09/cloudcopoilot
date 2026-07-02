@@ -14,9 +14,11 @@ from app.utils.helpers import deployments, add_deployment_log
 
 class DeploymentService:
     @staticmethod
-    def validate_aws_credentials(access_key: str, secret_key: str, region: str) -> bool:
-        """Validates IAM keys using sts.get_caller_identity."""
+    def validate_aws_credentials(access_key: str, secret_key: str, region: str) -> Dict[str, Any]:
+        """Validates IAM keys using sts.get_caller_identity and returns a structured result."""
         try:
+            if not access_key or not secret_key:
+                return {"valid": False, "reason": "AWS access key and secret key are required."}
             client = boto3.client(
                 'sts',
                 aws_access_key_id=access_key,
@@ -24,9 +26,16 @@ class DeploymentService:
                 region_name=region
             )
             client.get_caller_identity()
-            return True
-        except Exception:
-            return False
+            return {"valid": True, "reason": "AWS account verified successfully."}
+        except Exception as exc:
+            reason = str(exc)
+            if "InvalidClientTokenId" in reason or "SignatureDoesNotMatch" in reason:
+                reason = "AWS credentials are invalid or expired."
+            elif "Region" in reason:
+                reason = "AWS region is invalid or not supported."
+            else:
+                reason = "Unable to verify AWS credentials. Please check your IAM permissions and region."
+            return {"valid": False, "reason": reason}
 
     @staticmethod
     def start_deployment(
@@ -57,7 +66,8 @@ class DeploymentService:
             "duration_seconds": 0,
             "cost_estimate": 35.86,
             "timestamp": datetime.datetime.now().isoformat(),
-            "logs": []
+            "logs": [],
+            "console": []
         }
 
         # Spawn background execution thread
@@ -116,6 +126,9 @@ variable "aws_access_key" { type = string }
 variable "aws_secret_key" { type = string }
 variable "service_name" { type = string }
 variable "repository_url" { type = string }
+variable "runtime" { type = string }
+variable "build_command" { type = string }
+variable "start_command" { type = string }
 
 resource "aws_apprunner_service" "app" {
   service_name = var.service_name
@@ -131,9 +144,9 @@ resource "aws_apprunner_service" "app" {
       code_configuration {
         configuration_source = "API"
         code_configuration_values {
-          runtime       = "PYTHON_3"
-          build_command = "pip install -r requirements.txt"
-          start_command = "python run.py"
+          runtime       = var.runtime
+          build_command = var.build_command
+          start_command = var.start_command
         }
       }
     }
@@ -152,7 +165,10 @@ output "service_url" {
             "aws_access_key": access_key,
             "aws_secret_key": secret_key,
             "service_name": service_name,
-            "repository_url": repo_url
+            "repository_url": repo_url,
+            "runtime": runtime,
+            "build_command": build_command,
+            "start_command": start_command
         }
         with open(os.path.join(workspace_dir, "terraform.tfvars.json"), "w") as f:
             json.dump(tf_vars, f)
@@ -169,28 +185,12 @@ output "service_url" {
         has_terraform = shutil.which("terraform") is not None
         
         if not has_terraform:
-            # RUN REALISTIC SIMULATOR
-            add_deployment_log(deployment_id, "Initializing Terraform", "Terraform binary not found. Running deployment simulation...", "in_progress")
-            time.sleep(2.0)
-            add_deployment_log(deployment_id, "Initializing Terraform", "Terraform modules initialized successfully (simulation).", "completed")
-            
-            add_deployment_log(deployment_id, "Planning", "Evaluating deployment resources requirements plan...", "in_progress")
-            time.sleep(2.0)
-            add_deployment_log(deployment_id, "Planning", "Resources Plan created. 1 to create, 0 to change, 0 to destroy.", "completed")
-            
-            add_deployment_log(deployment_id, "Creating Infrastructure", "Creating App Runner service connection (simulation)...", "in_progress")
-            time.sleep(3.0)
-            add_deployment_log(deployment_id, "Creating Infrastructure", "AWS App Runner Service created. Service ARN registered.", "completed")
-            
-            add_deployment_log(deployment_id, "Deploying Application", "Pulling source commits from Git main branch...", "in_progress")
-            time.sleep(3.0)
-            add_deployment_log(deployment_id, "Deploying Application", "Source code packaged and uploaded. Initial deployment active.", "completed")
-            
-            add_deployment_log(deployment_id, "Verifying Health", "Sending ping request checks to domain endpoint...", "in_progress")
-            time.sleep(2.0)
-            add_deployment_log(deployment_id, "Verifying Health", "Health validation returned status code 200.", "completed")
-            
-            live_url = f"https://{service_name}.ap-south-1.awsapprunner.com"
+            add_deployment_log(deployment_id, "Initializing Terraform", "ERROR: Terraform CLI binary not found. Real deployments require Terraform to be installed on the system.", "failed")
+            dep_data = deployments[deployment_id]
+            dep_data["status"] = "failed"
+            dep_data["duration_seconds"] = int(time.time() - start_time)
+            deployments[deployment_id] = dep_data
+            return
         else:
             try:
                 # 2. Terraform Init

@@ -5,8 +5,10 @@ from app.services.deployment_service import DeploymentService
 from app.utils.helpers import deployments
 
 def test_validate_aws_credentials():
-    # Verify that invalid credentials return False correctly
-    assert not DeploymentService.validate_aws_credentials("fake_key", "fake_secret", "us-east-1")
+    # Verify that invalid credentials return a structured failure result
+    validation = DeploymentService.validate_aws_credentials("fake_key", "fake_secret", "us-east-1")
+    assert validation["valid"] is False
+    assert "AWS" in validation["reason"] or "Unable" in validation["reason"]
 
 def test_deployment_trigger_state():
     dep_id = "test-dep-123"

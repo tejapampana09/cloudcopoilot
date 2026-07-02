@@ -151,8 +151,8 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState<boolean>(api.isAuthenticated());
 
   // Settings states
-  const [apiKey, setApiKey] = useState<string>('sk-or-v1-75189466205...');
-  const [awsRegion, setAwsRegion] = useState<string>('ap-south-1');
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('cloudpilot_openai_key') || '');
+  const [awsRegion, setAwsRegion] = useState<string>(() => localStorage.getItem('cloudpilot_aws_region') || 'ap-south-1');
 
   // Live Deploy MVP states
   const [awsAccessKey, setAwsAccessKey] = useState<string>('');
@@ -165,10 +165,31 @@ function App() {
   const [deploymentId, setDeploymentId] = useState<string | null>(null);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'completed' | 'failed' | 'destroying' | 'destroyed'>('idle');
   const [deployLogs, setDeployLogs] = useState<any[]>([]);
+  const [deployConsole, setDeployConsole] = useState<string[]>([]);
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [deployDuration, setDeployDuration] = useState<number>(0);
   const [triggeringDeploy, setTriggeringDeploy] = useState<boolean>(false);
   const [deployHistory, setDeployHistory] = useState<any[]>([]);
+  const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
+
+  // Get time-aware greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Fetch backend health status
+  const fetchHealth = async () => {
+    try {
+      const res = await fetch(`${api.getApiBaseUrl()}/health`);
+      const data = await res.json();
+      setBackendHealthy(data.status === 'healthy');
+    } catch {
+      setBackendHealthy(false);
+    }
+  };
 
   useEffect(() => {
     if (result) {
@@ -237,6 +258,7 @@ function App() {
       try {
         const data = JSON.parse(event.data);
         setDeployLogs(data.logs || []);
+        setDeployConsole(data.console || []);
         setDeployStatus(data.status);
         if (data.status === 'completed') {
           setLiveUrl(data.url);
@@ -261,6 +283,7 @@ function App() {
     if (!result || !awsAccessKey || !awsSecretKey || !serviceNameInput) return;
     setTriggeringDeploy(true);
     setDeployLogs([]);
+    setDeployConsole([]);
     try {
       const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/trigger`, {
         method: 'POST',
@@ -315,6 +338,7 @@ function App() {
   useEffect(() => {
     if (authenticated) {
       fetchDeployHistory();
+      fetchHealth();
     }
   }, [authenticated]);
 
@@ -364,6 +388,12 @@ function App() {
     setActiveTab('Dashboard');
   };
 
+  const handleSaveSettings = () => {
+    localStorage.setItem('cloudpilot_openai_key', apiKey);
+    localStorage.setItem('cloudpilot_aws_region', awsRegion);
+    alert('Settings saved successfully!');
+  };
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-[#080C14] text-slate-100 flex items-center justify-center gap-2">
@@ -384,10 +414,10 @@ function App() {
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
         resultLoaded={!!result} 
+        currentUser={currentUser}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 pl-64 flex flex-col min-h-screen animate-[fadeIn_0.3s_ease-out]">
+      <div className="flex-1 flex flex-col">
         {/* Header - sync with active node status */}
         <Header 
           status={viewMode === 'infrastructure' ? (infra.status === 'generating' ? 'analyzing' : infra.status) : status} 
@@ -440,16 +470,30 @@ function App() {
                   <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-slate-800/40 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4 glow-blue">
                     <div className="space-y-1.5">
                       <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                        Good Morning, Srikar Reddy!
+                        {getGreeting()}, {currentUser?.email?.split('@')[0] || 'Developer'}!
                         <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
                       </h2>
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        Cloud health status: <span className="text-emerald-400 font-bold">All Systems Operational</span> &middot; Scanning pipeline is ready.
+                        Cloud health status:{' '}
+                        {backendHealthy === null
+                          ? <span className="text-slate-500 font-bold">Checking...</span>
+                          : backendHealthy
+                          ? <span className="text-emerald-400 font-bold">All Systems Operational</span>
+                          : <span className="text-rose-400 font-bold">Backend Offline</span>
+                        }{' '}· Scanning pipeline is ready.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/15">
-                      <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      <span className="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider">Health 100%</span>
+                    <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border ${
+                      backendHealthy === false
+                        ? 'bg-rose-500/10 border-rose-500/15'
+                        : 'bg-emerald-500/10 border-emerald-500/15'
+                    }`}>
+                      <Activity className={`w-4 h-4 ${backendHealthy === false ? 'text-rose-400' : 'text-emerald-400 animate-pulse'}`} />
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                        backendHealthy === false ? 'text-rose-400' : 'text-emerald-400'
+                      }`}>
+                        {backendHealthy === false ? 'Offline' : 'Health 100%'}
+                      </span>
                     </div>
                   </div>
 
@@ -474,11 +518,15 @@ function App() {
                           </div>
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-slate-400 font-semibold">Recent Audits count</span>
-                            <span className="font-extrabold text-slate-200">4 Completed</span>
+                            <span className="font-extrabold text-slate-200">{deployHistory.length > 0 ? `${deployHistory.length} Deployment${deployHistory.length !== 1 ? 's' : ''}` : 'No history yet'}</span>
                           </div>
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-slate-400 font-semibold">Security Alerts status</span>
-                            <span className="px-2 py-0.5 rounded text-[9px] bg-emerald-500/10 text-emerald-400 font-extrabold border border-emerald-500/20">CLEAN</span>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold border ${
+                              backendHealthy === false
+                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            }`}>{backendHealthy === false ? 'OFFLINE' : 'CLEAN'}</span>
                           </div>
                         </div>
                       </div>
@@ -491,6 +539,24 @@ function App() {
               )}
 
               {/* TAB 2: REPORTS (TABBED SCAN REPORTS VIEW) */}
+              {activeTab === 'Reports' && !result && (
+                <div className="flex flex-col items-center justify-center py-24 space-y-4 text-center animate-[fadeIn_0.4s_ease-out]">
+                  <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                    <FileCode2 className="w-8 h-8 text-slate-600" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-300">No Analysis Yet</h3>
+                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                    Run a repository scan from the Dashboard tab first. Reports will appear here once the 10-agent pipeline completes.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('Dashboard')}
+                    className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
+                  >
+                    Go to Dashboard
+                  </button>
+                </div>
+              )}
+
               {activeTab === 'Reports' && result && (
                 <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
                   {/* Tooling Header */}
@@ -553,6 +619,7 @@ function App() {
                             <SummaryCard 
                               summary={result.ai_summary} 
                               isAiEnhanced={!!result.ai_summary && (result.ai_summary.includes("OpenAI") || result.ai_summary.length > 150)} 
+                              productionPrompt={result.production_ready_prompt || result.executive_summary?.production_ready_prompt}
                             />
                             {/* Score Indicators */}
                             <div className="grid grid-cols-2 gap-4">
@@ -828,6 +895,7 @@ function App() {
                                   <InfrastructurePreview 
                                     files={infra.generatedFiles} 
                                     downloadUrl={infra.downloadUrl} 
+                                    generationId={infra.generationId}
                                   />
                                   <ValidationReportCard 
                                     score={infra.validationScore} 
@@ -937,7 +1005,9 @@ function App() {
                                   </div>
                                   <div className="flex justify-between items-center text-[11px]">
                                     <span className="text-slate-400">Estimated Cost</span>
-                                    <span className="font-bold text-blue-400">$35.86 / month</span>
+                                    <span className="font-bold text-blue-400">
+                                      ${result?.recommendation?.estimated_monthly_cost?.toFixed(2) || '35.86'} / month
+                                    </span>
                                   </div>
                                   <div className="flex justify-between items-center text-[11px]">
                                     <span className="text-slate-400">Resources to create</span>
@@ -991,6 +1061,20 @@ function App() {
                                   </div>
                                 ))}
                               </div>
+
+                              {/* Beautiful Console Output */}
+                              <div className="space-y-2 pt-2 border-t border-slate-900/50">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Live Console Output</span>
+                                <div className="p-4 bg-black/90 border border-slate-800/80 rounded-xl font-mono text-[10px] text-emerald-400/90 max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
+                                  {deployConsole.length === 0 ? (
+                                    <div className="text-slate-500 italic">Initializing console stream...</div>
+                                  ) : (
+                                    deployConsole.map((line, idx) => (
+                                      <div key={idx} className="leading-relaxed break-all whitespace-pre-wrap">{line}</div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
 
@@ -1027,7 +1111,9 @@ function App() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-slate-400">Estimated billing tier</span>
-                                  <span className="font-extrabold text-blue-400">$35.86 / mo (USD)</span>
+                                  <span className="font-extrabold text-blue-400">
+                                    ${result?.recommendation?.estimated_monthly_cost?.toFixed(2) || '35.86'} / mo (USD)
+                                  </span>
                                 </div>
                               </div>
 
@@ -1054,6 +1140,20 @@ function App() {
                               <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/15 rounded-xl text-rose-300 text-xs">
                                 <AlertCircle className="w-5 h-5 shrink-0" />
                                 <span className="font-bold">AWS Deployment Failed. Audit logs below.</span>
+                              </div>
+
+                              {/* Beautiful Console Output for failure audit */}
+                              <div className="space-y-2">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Audit Console Logs</span>
+                                <div className="p-4 bg-black/90 border border-slate-800 rounded-xl font-mono text-[10px] text-rose-300/90 max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
+                                  {deployConsole.length === 0 ? (
+                                    <div className="text-slate-500 italic">No console logs available.</div>
+                                  ) : (
+                                    deployConsole.map((line, idx) => (
+                                      <div key={idx} className="leading-relaxed break-all whitespace-pre-wrap">{line}</div>
+                                    ))
+                                  )}
+                                </div>
                               </div>
 
                               <button
@@ -1163,7 +1263,7 @@ function App() {
                       </select>
                     </div>
 
-                    <button className="w-full mt-4 py-2.5 rounded-xl btn-primary text-xs cursor-pointer">
+                    <button className="w-full mt-4 py-2.5 rounded-xl btn-primary text-xs cursor-pointer" onClick={handleSaveSettings}>
                       Save Settings
                     </button>
                   </div>

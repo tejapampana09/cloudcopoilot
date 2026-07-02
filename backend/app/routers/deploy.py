@@ -6,7 +6,7 @@ import asyncio
 import json
 
 from app.services.deployment_service import DeploymentService
-from app.utils.helpers import deployments
+from app.utils.helpers import deployments, analysis_tasks
 from app.routers.auth import get_current_user
 
 router = APIRouter()
@@ -31,17 +31,17 @@ class DeploymentResponse(BaseModel):
 
 # Endpoints
 @router.post("/connect", response_model=Dict[str, Any])
-def connect_aws(request: ConnectAWSRequest):
-    """Validates AWS IAM access credentials."""
-    valid = DeploymentService.validate_aws_credentials(
+def connect_aws(request: ConnectAWSRequest, current_user = Depends(get_current_user)):
+    """Validates AWS IAM access credentials (requires authentication)."""
+    validation = DeploymentService.validate_aws_credentials(
         request.access_key, request.secret_key, request.region
     )
-    if not valid:
+    if not validation.get("valid"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid AWS IAM credentials or region configuration."
+            detail=validation.get("reason", "Invalid AWS IAM credentials or region configuration.")
         )
-    return {"status": "success", "message": "AWS Account verified successfully."}
+    return {"status": "success", "message": validation.get("reason", "AWS Account verified successfully.")}
 
 @router.post("/trigger", response_model=DeploymentResponse)
 def trigger_deployment(request: DeployTriggerRequest, current_user = Depends(get_current_user)):
@@ -49,6 +49,42 @@ def trigger_deployment(request: DeployTriggerRequest, current_user = Depends(get
     import uuid
     deployment_id = str(uuid.uuid4())
     
+    # Try to find corresponding completed analysis task to extract runtime & commands
+    runtime = "PYTHON_3"
+    build_command = "pip install -r requirements.txt"
+    start_command = "python run.py"
+    
+    # Find matching analysis task
+    matching_task = None
+    for task_id, task in analysis_tasks.items():
+        if task.get("repository_url") == request.repository_url and task.get("status") == "completed":
+            matching_task = task
+            break
+            
+    if matching_task:
+        metadata = matching_task.get("metadata", {})
+        # Languages
+        languages = metadata.get("languages", [])
+        primary_lang = languages[0].get("name").upper() if languages else "PYTHON"
+        
+        # Build & Run Commands
+        build_commands = metadata.get("build_commands", [])
+        run_commands = metadata.get("run_commands", [])
+        
+        # Map runtime
+        if "NODE" in primary_lang or "JAVASCRIPT" in primary_lang or "TYPESCRIPT" in primary_lang:
+            runtime = "NODEJS_16"  # Safe default for JS/TS stacks
+            build_command = build_commands[0] if build_commands else "npm install"
+            start_command = run_commands[0] if run_commands else "npm start"
+        elif "GO" in primary_lang:
+            runtime = "GO_1"
+            build_command = build_commands[0] if build_commands else "go build"
+            start_command = run_commands[0] if run_commands else "./main"
+        else:
+            runtime = "PYTHON_3"
+            build_command = build_commands[0] if build_commands else "pip install -r requirements.txt"
+            start_command = run_commands[0] if run_commands else "python run.py"
+
     DeploymentService.start_deployment(
         deployment_id=deployment_id,
         user_id=current_user.id if current_user else None,
@@ -57,7 +93,10 @@ def trigger_deployment(request: DeployTriggerRequest, current_user = Depends(get
         access_key=request.access_key,
         secret_key=request.secret_key,
         region=request.region,
-        service_name=request.service_name
+        service_name=request.service_name,
+        runtime=runtime,
+        build_command=build_command,
+        start_command=start_command
     )
     
     return {"deployment_id": deployment_id, "status": "pending"}
@@ -87,8 +126,8 @@ def get_deployment_status(deployment_id: str):
     return dep
 
 @router.post("/destroy/{deployment_id}", response_model=Dict[str, Any])
-def destroy_deployment(deployment_id: str):
-    """Decommissions deployed AWS infrastructure resources."""
+def destroy_deployment(deployment_id: str, current_user = Depends(get_current_user)):
+    """Decommissions deployed AWS infrastructure resources (requires authentication)."""
     dep = deployments.get(deployment_id)
     if not dep:
         raise HTTPException(
@@ -100,8 +139,8 @@ def destroy_deployment(deployment_id: str):
     return {"status": "success", "message": "Resource destruction triggered."}
 
 @router.get("/stream/{deployment_id}")
-async def stream_deployment(deployment_id: str):
-    """Streams live deployment logs and state updates using SSE."""
+async def stream_deployment(deployment_id: str, current_user = Depends(get_current_user)):
+    """Streams live deployment logs and state updates using SSE (requires authentication via ?token= param)."""
     async def event_generator():
         while True:
             dep = deployments.get(deployment_id)
@@ -116,4 +155,12 @@ async def stream_deployment(deployment_id: str):
                 
             await asyncio.sleep(1.0)
             
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        }
+    )

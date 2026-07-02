@@ -123,6 +123,20 @@ export const api = {
     return `${API_BASE_URL}/api/v1/infrastructure/download/${generationId}${token ? `?token=${token}` : ''}`;
   },
 
+  applyInfrastructureToWorkspace: async (generationId: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/infrastructure/apply/${generationId}`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to apply configurations to workspace.');
+    }
+
+    return response.json();
+  },
+
   chatWithRepository: async (taskId: string, message: string): Promise<string> => {
     const response = await fetch(`${API_BASE_URL}/api/v1/analyze/chat`, {
       method: 'POST',

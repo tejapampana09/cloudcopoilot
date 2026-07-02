@@ -31,6 +31,13 @@ def add_deployment_log(deployment_id: str, stage: str, message: str, status: str
             logs.append(log)
             
         dep_data["logs"] = logs
+        
+        # Append to console list
+        console = dep_data.get("console", [])
+        time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        console.append(f"[{time_str}] [{stage}] {message}")
+        dep_data["console"] = console
+        
         deployments[deployment_id] = dep_data
         
     return log

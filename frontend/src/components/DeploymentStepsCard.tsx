@@ -41,25 +41,25 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
       id: 2,
       label: 'Architecture Agent',
       desc: 'Parses codebase dependency boundaries',
-      status: getAgentStatus('Infrastructure Agent')
+      status: getAgentStatus('Architecture Agent')
     },
     {
       id: 3,
       label: 'Security Agent',
-      desc: 'Audits database locks & credentials leaks',
-      status: getAgentStatus('Deployment Agent') === 'completed' ? 'completed' : logs.length > 5 ? 'completed' : 'pending'
+      desc: 'Audits credentials leaks & auth issues',
+      status: getAgentStatus('Security Agent')
     },
     {
       id: 4,
       label: 'Performance Agent',
       desc: 'Checks SQLite write locks and file limits',
-      status: getAgentStatus('Deployment Agent') === 'completed' ? 'completed' : logs.length > 6 ? 'completed' : 'pending'
+      status: getAgentStatus('Performance Agent')
     },
     {
       id: 5,
       label: 'Cloud Architect Agent',
       desc: 'Runs weighted AWS recommendations engine',
-      status: getAgentStatus('Deployment Agent')
+      status: getAgentStatus('Cloud Architect Agent')
     },
     {
       id: 6,
@@ -83,7 +83,7 @@ export const DeploymentStepsCard: React.FC<DeploymentStepsCardProps> = ({ status
       id: 9,
       label: 'Cost Optimization Agent',
       desc: 'Identifies Spot instances cost savings',
-      status: getAgentStatus('Deployment Agent')
+      status: getAgentStatus('Cost Optimization Agent')
     },
     {
       id: 10,

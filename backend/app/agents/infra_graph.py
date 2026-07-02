@@ -7,7 +7,7 @@ from langgraph.graph import StateGraph, END
 
 logger = logging.getLogger(__name__)
 
-from app.core.config import settings
+from app.core.config import settings, get_chat_llm
 from app.agents.infra_state import InfrastructureState
 from app.services.generator_service import HeuristicGenerator
 from app.services.packaging_service import PackagingService
@@ -27,13 +27,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 TEMP_DIR = os.path.join(BASE_DIR, "temp")
 DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
 
+
 # Helper to run LLM completion
 def call_llm(system_prompt: str, user_prompt: str) -> str:
     """Invokes OpenAI LLM. Raises exception if unconfigured or fails."""
     if not HAS_LANGCHAIN or not settings.OPENAI_API_KEY:
         raise ValueError("OpenAI API key not configured.")
         
-    llm = ChatOpenAI(
+    llm = get_chat_llm(
         api_key=settings.OPENAI_API_KEY,
         model_name=settings.OPENAI_MODEL,
         temperature=0.2,

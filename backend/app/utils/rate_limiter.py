@@ -6,13 +6,15 @@ from starlette.responses import JSONResponse
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     A sliding window rate limiting middleware that restricts requests per client IP.
-    Default limit is 30 requests per minute.
+    Default limit is 40 requests per minute.
+    Stale IP entries are evicted every 1000 requests to prevent unbounded memory growth.
     """
-    def __init__(self, app, requests_per_minute: int = 30):
+    def __init__(self, app, requests_per_minute: int = 40):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         # Maps client_ip -> list of request timestamps
         self.ip_tracker = {}
+        self._request_count = 0
 
     async def dispatch(self, request: Request, call_next) -> Response:
         # Exclude static/health check endpoints from rate limiting
@@ -23,7 +25,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown-ip"
         current_time = time.time()
 
-        # Clean up older timestamps
+        # Clean up older timestamps for this IP
         if client_ip in self.ip_tracker:
             self.ip_tracker[client_ip] = [
                 t for t in self.ip_tracker[client_ip]
@@ -31,6 +33,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             ]
         else:
             self.ip_tracker[client_ip] = []
+
+        # Periodically evict IPs with no recent activity to prevent memory leak
+        self._request_count += 1
+        if self._request_count % 1000 == 0:
+            stale_cutoff = current_time - 600  # 10 minutes idle
+            stale_ips = [
+                ip for ip, timestamps in self.ip_tracker.items()
+                if not timestamps or max(timestamps) < stale_cutoff
+            ]
+            for ip in stale_ips:
+                del self.ip_tracker[ip]
 
         # Check limit
         if len(self.ip_tracker[client_ip]) >= self.requests_per_minute:

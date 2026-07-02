@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import asyncio
+from typing import Dict, Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Depends
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
@@ -180,3 +181,48 @@ async def download_infrastructure(generation_id: str, current_user: User = Depen
         media_type="application/zip",
         filename="cloudpilot-infra.zip"
     )
+
+@router.post("/apply/{generation_id}", response_model=Dict[str, Any])
+async def apply_to_workspace(generation_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Applies generated configurations directly to the user's active local workspace directory.
+    """
+    if generation_id not in infra_generations:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Generation session not found."
+        )
+        
+    gen_data = infra_generations[generation_id]
+    if gen_data.get("user_id") != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied."
+        )
+        
+    generated_files = gen_data.get("generated_files", {})
+    if not generated_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No files generated in this session."
+        )
+        
+    # User's workspace root
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    written = []
+    for filepath, content in generated_files.items():
+        # Avoid path traversal
+        clean_path = os.path.normpath(filepath).replace("\\", "/").lstrip("/")
+        if ".." in clean_path:
+            continue
+        dest_path = os.path.join(base_dir, clean_path)
+        
+        # Ensure directory structure exists
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+        with open(dest_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        written.append(clean_path)
+        
+    return {"status": "success", "message": f"Successfully applied {len(written)} configuration files directly to your local project.", "files": written}
+

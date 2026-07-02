@@ -139,6 +139,13 @@ class PostgresDict(collections.abc.MutableMapping):
             return result is not None
         finally:
             db.close()
+
+    def get(self, key, default=None):
+        """Returns item by key, or default if not found. Prevents AttributeError on dict.get() calls."""
+        try:
+            return self[key]
+        except KeyError:
+            return default
         
     def items(self):
         db = SessionLocal()

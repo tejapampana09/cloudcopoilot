@@ -4,9 +4,10 @@ import { Cpu, BrainCircuit } from 'lucide-react';
 interface SummaryCardProps {
   summary: string;
   isAiEnhanced: boolean;
+  productionPrompt?: string;
 }
 
-export const SummaryCard: React.FC<SummaryCardProps> = ({ summary, isAiEnhanced }) => {
+export const SummaryCard: React.FC<SummaryCardProps> = ({ summary, isAiEnhanced, productionPrompt }) => {
   return (
     <div className="glass-panel p-6 rounded-2xl glow-cyan flex flex-col h-full">
       {/* Header */}
@@ -33,6 +34,13 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ summary, isAiEnhanced 
           "{summary}"
         </p>
       </div>
+
+      {productionPrompt && (
+        <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Production-ready prompt</div>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap">{productionPrompt}</p>
+        </div>
+      )}
 
       {/* Small suggestion footer */}
       <div className="mt-4 text-[10px] text-slate-500 flex items-center gap-1.5 font-semibold">
