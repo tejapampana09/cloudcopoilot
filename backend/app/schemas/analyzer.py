@@ -35,6 +35,12 @@ class RepoMetadata(BaseModel):
     contributors_count: int = 0
     technical_debt_score: int = 50
     complexity_index: str = "Medium"
+    detected_secrets: List[str] = Field(default_factory=list)
+    dependency_risks: List[str] = Field(default_factory=list)
+    large_files: List[str] = Field(default_factory=list)
+    circular_dependencies: List[str] = Field(default_factory=list)
+    stale_branches: List[str] = Field(default_factory=list)
+    release_tags: List[str] = Field(default_factory=list)
 
 class CostBreakdown(BaseModel):
     compute: float
@@ -81,3 +87,13 @@ class AnalysisResult(BaseModel):
     ai_summary: str
     logs: List[AgentLog] = Field(default_factory=list)
     error: Optional[str] = None
+    repository_report: Optional[Dict[str, Any]] = None
+    architecture_report: Optional[Dict[str, Any]] = None
+    security_report: Optional[Dict[str, Any]] = None
+    performance_report: Optional[Dict[str, Any]] = None
+    cloud_report: Optional[Dict[str, Any]] = None
+    cost_report: Optional[Dict[str, Any]] = None
+    devops_report: Optional[Dict[str, Any]] = None
+    executive_summary: Optional[Dict[str, Any]] = None
+    overall_repository_score: Optional[int] = None
+    overall_cloud_readiness_score: Optional[int] = None

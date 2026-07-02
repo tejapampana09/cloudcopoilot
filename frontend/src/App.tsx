@@ -19,7 +19,7 @@ import { useInfrastructureStream } from './hooks/useInfrastructureStream';
 import { 
   AlertCircle, Loader2, ShieldAlert, Sparkles, 
   Activity, Layers, FileCode2,
-  DollarSign, Zap
+  DollarSign, Zap, CheckCircle2
 } from 'lucide-react';
 import { Login } from './components/Login';
 import { api } from './services/api';
@@ -358,7 +358,7 @@ function App() {
 
                   {/* Reports Sub-Tab Panel Selection Header */}
                   <div className="flex gap-2 flex-wrap border-b border-slate-850 pb-2">
-                    {['Overview', 'Architecture', 'Security', 'Performance', 'AWS Topology', 'Cost Analyzer', 'IaC Deployment'].map((tab) => {
+                    {['Overview', 'Architecture', 'Security', 'Performance', 'AWS Topology', 'Cost Analyzer', 'DevOps', 'IaC Deployment'].map((tab) => {
                       const isActive = reportsSubTab === tab;
                       return (
                         <button
@@ -380,16 +380,56 @@ function App() {
                   <div className="space-y-8">
                     {/* Sub-Tab 1: Overview */}
                     {reportsSubTab === 'Overview' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-1 space-y-8">
-                          <RepoAnalysisCard result={result} />
+                      <div className="space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                          <div className="lg:col-span-1 space-y-8">
+                            <RepoAnalysisCard result={result} />
+                          </div>
+                          <div className="lg:col-span-2 space-y-8">
+                            <SummaryCard 
+                              summary={result.ai_summary} 
+                              isAiEnhanced={!!result.ai_summary && (result.ai_summary.includes("OpenAI") || result.ai_summary.length > 150)} 
+                            />
+                            {/* Score Indicators */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl flex flex-col justify-center items-center">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Repository Quality</span>
+                                <span className="text-2xl font-extrabold text-blue-400 mt-1">{result.overall_repository_score || 85}%</span>
+                              </div>
+                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl flex flex-col justify-center items-center">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Cloud Readiness</span>
+                                <span className="text-2xl font-extrabold text-emerald-400 mt-1">{result.overall_cloud_readiness_score || result.health_score || 78}%</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="lg:col-span-2 space-y-8">
-                          <SummaryCard 
-                            summary={result.ai_summary} 
-                            isAiEnhanced={!!result.ai_summary && (result.ai_summary.includes("OpenAI") || result.ai_summary.length > 150)} 
-                          />
-                        </div>
+
+                        {result.executive_summary && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                            <div className="p-5 bg-rose-500/5 border border-rose-500/10 rounded-xl space-y-3">
+                              <h4 className="text-xs font-extrabold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                                <ShieldAlert className="w-4.5 h-4.5" />
+                                Priority Fixes
+                              </h4>
+                              <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-350">
+                                {result.executive_summary.priority_fixes.map((fix: string, idx: number) => (
+                                  <li key={idx}>{fix}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-3">
+                              <h4 className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
+                                Cloud Action Plan
+                              </h4>
+                              <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-350">
+                                {result.executive_summary.action_plan.map((act: string, idx: number) => (
+                                  <li key={idx}>{act}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -554,6 +594,48 @@ function App() {
                           <ComputeCompareChart 
                             recommendedTarget={result.recommendation.target}
                           />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-Tab 6: DevOps */}
+                    {reportsSubTab === 'DevOps' && result.devops_report && (
+                      <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6 max-w-3xl">
+                        <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
+                          <Layers className="w-5 h-5 text-indigo-400" />
+                          <h4 className="text-sm font-bold text-white">DevOps & CI/CD Review</h4>
+                        </div>
+                        <div className="space-y-4 text-xs text-slate-300 leading-relaxed">
+                          <p>
+                            We audited the codebase CI/CD config structures to propose optimal deployment delivery tools.
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
+                              <span className="text-xs font-bold text-white block">Docker & Containerization</span>
+                              <p className="text-[11px] text-slate-400">
+                                {result.devops_report.docker_readiness 
+                                  ? "Dockerfile configurations found. Mapped to run container packages directly." 
+                                  : "Dockerfile missing. We recommend containerization to package environment runtimes."}
+                              </p>
+                            </div>
+                            
+                            <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-2">
+                              <span className="text-xs font-bold text-white block">CI/CD Pipeline Tools</span>
+                              <p className="text-[11px] text-slate-400 font-mono text-cyan-400">
+                                Mapped pipelines: {result.devops_report.cicd_tools.join(', ')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 pt-2">
+                            <span className="font-bold text-white">DevOps recommendations:</span>
+                            <ul className="list-decimal pl-5 space-y-1 text-slate-400">
+                              {result.devops_report.missing_devops_tooling.map((tool: string, idx: number) => (
+                                <li key={idx}>{tool}</li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
                       </div>
                     )}

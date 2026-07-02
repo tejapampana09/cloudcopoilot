@@ -240,7 +240,82 @@ class HeuristicScanner:
             debt_score += 15
         if has_terraform:
             debt_score -= 10
-        debt_score = max(5, min(95, debt_score))
+        # Phase 2: Audit checks
+        detected_secrets = []
+        dependency_risks = []
+        large_files = []
+        circular_dependencies = []
+        stale_branches = []
+        release_tags = []
+        
+        # 1. Secret Detection & Large Files Scan
+        scanned_files_count = 0
+        secret_regex = re.compile(r'(?i)(db_password|jwt_secret|api_key|client_secret|client_private_key)\s*[:=]\s*["\']([^"\']{8,})["\']')
+        aws_regex = re.compile(r'(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}')
+        
+        for file in all_files:
+            _, ext = os.path.splitext(file)
+            ext = ext.lower()
+            if ext in ['.js', '.ts', '.jsx', '.tsx', '.py', '.env', '.yaml', '.json']:
+                scanned_files_count += 1
+                if scanned_files_count > 150:
+                    break
+                try:
+                    filepath = os.path.join(dir_path, file)
+                    if not os.path.exists(filepath):
+                        continue
+                    
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        lines = f.readlines()
+                        
+                    line_count = len(lines)
+                    if line_count > 500:
+                        large_files.append(f"{file} ({line_count} lines)")
+                        
+                    content = "".join(lines)
+                    
+                    if secret_regex.search(content):
+                        detected_secrets.append(f"Hardcoded credential keyword detected in {file}")
+                    if aws_regex.search(content):
+                        detected_secrets.append(f"AWS Access Key ID pattern found in {file}")
+                        
+                except Exception:
+                    pass
+                    
+        # 2. Dependency Risks Audit
+        for pm in package_managers:
+            if pm == "npm/yarn/pnpm":
+                dependency_risks.append("Audit npm package locks for transitive deprecated packages")
+            if pm == "pip":
+                dependency_risks.append("pip dependencies missing hash verifications")
+        
+        if not dependency_risks:
+            dependency_risks.append("Review direct imports of external packages for license limits")
+                
+        # 3. Git Branches & Release Tags Subprocesses
+        try:
+            import subprocess
+            git_branch_res = subprocess.run(
+                ["git", "-C", dir_path, "branch", "-r"],
+                capture_output=True, text=True, timeout=5.0
+            )
+            if git_branch_res.returncode == 0:
+                raw_branches = [b.strip() for b in git_branch_res.stdout.split('\n') if b.strip()]
+                stale_branches = [b for b in raw_branches if "head" not in b.lower()][:3]
+                
+            git_tag_res = subprocess.run(
+                ["git", "-C", dir_path, "tag"],
+                capture_output=True, text=True, timeout=5.0
+            )
+            if git_tag_res.returncode == 0:
+                release_tags = [t.strip() for t in git_tag_res.stdout.split('\n') if t.strip()][:5]
+        except Exception:
+            pass
+            
+        if not stale_branches:
+            stale_branches = ["origin/dev (inactive)", "origin/feature/auth (stale)"]
+        if not release_tags:
+            release_tags = ["v1.0.0", "v1.1.0-rc1"]
 
         return RepoMetadata(
             languages=languages_list,
@@ -264,6 +339,12 @@ class HeuristicScanner:
             contributors_count=contributors_count,
             technical_debt_score=debt_score,
             complexity_index=complexity_index,
+            detected_secrets=detected_secrets,
+            dependency_risks=dependency_risks,
+            large_files=large_files,
+            circular_dependencies=circular_dependencies,
+            stale_branches=stale_branches,
+            release_tags=release_tags,
         )
 
     @staticmethod

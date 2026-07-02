@@ -25,6 +25,12 @@ export interface RepoMetadata {
   contributors_count?: number;
   technical_debt_score?: number;
   complexity_index?: 'Low' | 'Medium' | 'High';
+  detected_secrets?: string[];
+  dependency_risks?: string[];
+  large_files?: string[];
+  circular_dependencies?: string[];
+  stale_branches?: string[];
+  release_tags?: string[];
 }
 
 export interface CostBreakdown {
@@ -79,6 +85,16 @@ export interface AnalysisResult {
   logs: AgentLog[];
   error?: string;
   cost_analysis?: string;
+  repository_report?: any;
+  architecture_report?: any;
+  security_report?: any;
+  performance_report?: any;
+  cloud_report?: any;
+  cost_report?: any;
+  devops_report?: any;
+  executive_summary?: any;
+  overall_repository_score?: number;
+  overall_cloud_readiness_score?: number;
 }
 
 export interface AnalyzeRequest {
