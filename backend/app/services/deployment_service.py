@@ -49,7 +49,8 @@ class DeploymentService:
         service_name: str,
         runtime: str = "PYTHON_3",
         build_command: str = "pip install -r requirements.txt",
-        start_command: str = "python run.py"
+        start_command: str = "python run.py",
+        connection_arn: Optional[str] = None
     ) -> None:
         """Initializes state and triggers background deployment worker."""
         # Initialize deployment dictionary
@@ -73,7 +74,7 @@ class DeploymentService:
         # Spawn background execution thread
         t = threading.Thread(
             target=DeploymentService._execute_deployment_worker,
-            args=(deployment_id, access_key, secret_key, region, repo_url, repo_name, service_name, runtime, build_command, start_command),
+            args=(deployment_id, access_key, secret_key, region, repo_url, repo_name, service_name, runtime, build_command, start_command, connection_arn),
             daemon=True
         )
         t.start()
@@ -89,7 +90,8 @@ class DeploymentService:
         service_name: str,
         runtime: str,
         build_command: str,
-        start_command: str
+        start_command: str,
+        connection_arn: Optional[str]
     ) -> None:
         start_time = time.time()
         
@@ -129,12 +131,16 @@ variable "repository_url" { type = string }
 variable "runtime" { type = string }
 variable "build_command" { type = string }
 variable "start_command" { type = string }
+variable "connection_arn" { type = string }
 
 resource "aws_apprunner_service" "app" {
   service_name = var.service_name
 
   source_configuration {
-    auto_deployments_enabled = false
+    auto_deployments_enabled = true
+    authentication_configuration {
+      connection_arn = var.connection_arn
+    }
     code_repository {
       repository_url = var.repository_url
       source_code_version {
@@ -168,7 +174,8 @@ output "service_url" {
             "repository_url": repo_url,
             "runtime": runtime,
             "build_command": build_command,
-            "start_command": start_command
+            "start_command": start_command,
+            "connection_arn": connection_arn or ""
         }
         with open(os.path.join(workspace_dir, "terraform.tfvars.json"), "w") as f:
             json.dump(tf_vars, f)

@@ -24,6 +24,7 @@ class DeployTriggerRequest(BaseModel):
     secret_key: str
     region: str
     service_name: str
+    connection_arn: str = Field(..., description="AWS App Runner Connection ARN for GitHub")
 
 class DeploymentResponse(BaseModel):
     deployment_id: str
@@ -96,7 +97,8 @@ def trigger_deployment(request: DeployTriggerRequest, current_user = Depends(get
         service_name=request.service_name,
         runtime=runtime,
         build_command=build_command,
-        start_command=start_command
+        start_command=start_command,
+        connection_arn=request.connection_arn
     )
     
     return {"deployment_id": deployment_id, "status": "pending"}

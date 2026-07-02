@@ -159,6 +159,7 @@ function App() {
   const [awsSecretKey, setAwsSecretKey] = useState<string>('');
   const [awsRegionSelect, setAwsRegionSelect] = useState<string>('ap-south-1');
   const [serviceNameInput, setServiceNameInput] = useState<string>('');
+  const [awsConnectionArn, setAwsConnectionArn] = useState<string>(() => localStorage.getItem('cloudpilot_aws_connection_arn') || '');
   const [awsVerified, setAwsVerified] = useState<boolean>(false);
   const [verifyingAws, setVerifyingAws] = useState<boolean>(false);
   const [awsVerifyMessage, setAwsVerifyMessage] = useState<string | null>(null);
@@ -297,7 +298,8 @@ function App() {
           access_key: awsAccessKey,
           secret_key: awsSecretKey,
           region: awsRegionSelect,
-          service_name: serviceNameInput
+          service_name: serviceNameInput,
+          connection_arn: awsConnectionArn
         })
       });
 
@@ -391,6 +393,7 @@ function App() {
   const handleSaveSettings = () => {
     localStorage.setItem('cloudpilot_openai_key', apiKey);
     localStorage.setItem('cloudpilot_aws_region', awsRegion);
+    localStorage.setItem('cloudpilot_aws_connection_arn', awsConnectionArn);
     alert('Settings saved successfully!');
   };
 
@@ -1022,13 +1025,25 @@ function App() {
                                       placeholder="Service identifier"
                                       className="glass-input px-3 py-2 rounded-xl text-xs"
                                     />
+                                  <div className="flex flex-col gap-1.5 pt-2">
+                                    <label className="text-[10px] text-slate-455 font-bold">AWS App Runner Connection ARN (GitHub Auth)</label>
+                                    <input 
+                                      type="text" 
+                                      value={awsConnectionArn}
+                                      onChange={(e) => setAwsConnectionArn(e.target.value)}
+                                      placeholder="arn:aws:apprunner:region:account:connection/name"
+                                      className="glass-input px-3 py-2 rounded-xl text-xs"
+                                    />
+                                    <span className="text-[9px] text-slate-500 leading-normal block">
+                                      Used to link GitHub. Create a Connection in your AWS Console (App Runner &gt; Connections &gt; Create Connection).
+                                    </span>
                                   </div>
                                 </div>
                               </div>
 
                               <button
                                 onClick={handleTriggerDeploy}
-                                disabled={!awsVerified || triggeringDeploy || !serviceNameInput}
+                                disabled={!awsVerified || triggeringDeploy || !serviceNameInput || !awsConnectionArn}
                                 className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-emerald-500/10"
                               >
                                 {triggeringDeploy ? "Triggering..." : "🚀 Confirm & Deploy Live"}
