@@ -7,6 +7,33 @@ from app.utils.database import SqliteDict
 # SQLite-backed persistent datastores
 analysis_tasks = SqliteDict("analyses", "task_id")
 infra_generations = SqliteDict("generations", "generation_id")
+deployments = SqliteDict("deployments", "deployment_id")
+
+def add_deployment_log(deployment_id: str, stage: str, message: str, status: str) -> Dict[str, Any]:
+    """
+    Appends a log to the active deployment in the global store.
+    """
+    timestamp = datetime.datetime.now().strftime("%I:%M:%S %p")
+    log = {"stage": stage, "message": message, "timestamp": timestamp, "status": status}
+    
+    if deployment_id in deployments:
+        dep_data = deployments[deployment_id]
+        logs = dep_data.get("logs", [])
+        
+        updated = False
+        for i, existing_log in enumerate(logs):
+            if existing_log.get("stage") == stage and existing_log.get("status") in ["pending", "in_progress"]:
+                logs[i] = log
+                updated = True
+                break
+                
+        if not updated:
+            logs.append(log)
+            
+        dep_data["logs"] = logs
+        deployments[deployment_id] = dep_data
+        
+    return log
 
 def add_agent_log(task_id: str, agent: str, message: str, status: str) -> AgentLog:
     """

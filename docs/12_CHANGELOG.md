@@ -6,6 +6,7 @@ All notable changes to the CloudPilot platform will be documented in this file.
 
 ## [2.0.0-beta] - 2026-07-02
 ### Added
+- **CloudPilot Deploy MVP**: Implemented AWS App Runner live deployments. Exposes IAM key verifiers, service configuration parameters, and live SSE streaming logs. Spawns python background threads executing `terraform init/plan/apply` commands or simulating progress if CLI keys are absent. Includes destruction infrastructure controls and database persistence logging.
 - **Phase 2 Repository Intelligence Audit**: Integrated secret detection (AWS Keys, JWT secrets, credentials), large files checks (>500 lines), circular dependencies, and git remote branch release tags checks inside [scanner.py](file:///c:/Users/ss/Desktop/New%20folder/backend/app/services/scanner.py).
 - **Phase 3 Multi-Agent AI Orchestration**: Restructured [graph.py](file:///c:/Users/ss/Desktop/New%20folder/backend/app/agents/graph.py) to run the 8 specialized agents in cooperative sequence: Repository Agent -> Architecture Agent -> Security Agent -> Performance Agent -> Cloud Architect Agent -> AWS Cost Agent -> DevOps Agent -> Executive Summary Agent.
 - **Specialized Report Serialization**: Configured graph state outputs to populate and serialize Repository Report, Architecture Report, Security Report, Performance Report, Cloud Report, Cost Report, DevOps Report, Executive Summary, Overall Repository Score, and Overall Cloud Readiness Score.

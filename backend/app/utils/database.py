@@ -34,7 +34,7 @@ def init_db():
     """Initializes PostgreSQL database tables if they do not exist."""
     # Importing models here registers them on Base.metadata
     from app.models.user import User
-    from app.models.analysis import Analysis, Generation
+    from app.models.analysis import Analysis, Generation, Deployment
     Base.metadata.create_all(bind=engine)
 
 class PersistentDict(dict):

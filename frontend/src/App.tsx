@@ -154,6 +154,170 @@ function App() {
   const [apiKey, setApiKey] = useState<string>('sk-or-v1-75189466205...');
   const [awsRegion, setAwsRegion] = useState<string>('ap-south-1');
 
+  // Live Deploy MVP states
+  const [awsAccessKey, setAwsAccessKey] = useState<string>('');
+  const [awsSecretKey, setAwsSecretKey] = useState<string>('');
+  const [awsRegionSelect, setAwsRegionSelect] = useState<string>('ap-south-1');
+  const [serviceNameInput, setServiceNameInput] = useState<string>('');
+  const [awsVerified, setAwsVerified] = useState<boolean>(false);
+  const [verifyingAws, setVerifyingAws] = useState<boolean>(false);
+  const [awsVerifyMessage, setAwsVerifyMessage] = useState<string | null>(null);
+  const [deploymentId, setDeploymentId] = useState<string | null>(null);
+  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'completed' | 'failed' | 'destroying' | 'destroyed'>('idle');
+  const [deployLogs, setDeployLogs] = useState<any[]>([]);
+  const [liveUrl, setLiveUrl] = useState<string | null>(null);
+  const [deployDuration, setDeployDuration] = useState<number>(0);
+  const [triggeringDeploy, setTriggeringDeploy] = useState<boolean>(false);
+  const [deployHistory, setDeployHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (result) {
+      setServiceNameInput(`cloudpilot-${result.repository_name.toLowerCase()}`);
+    }
+  }, [result]);
+
+  const fetchDeployHistory = async () => {
+    try {
+      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/history`, {
+        headers: {
+          'Authorization': `Bearer ${api.getToken()}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDeployHistory(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch deploy history", err);
+    }
+  };
+
+  const handleVerifyAWS = async () => {
+    if (!awsAccessKey || !awsSecretKey) {
+      setAwsVerifyMessage("Access Key and Secret Key are required.");
+      return;
+    }
+    setVerifyingAws(true);
+    setAwsVerifyMessage(null);
+    try {
+      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify({
+          access_key: awsAccessKey,
+          secret_key: awsSecretKey,
+          region: awsRegionSelect
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        setAwsVerified(true);
+        setAwsVerifyMessage("AWS IAM Credentials verified successfully!");
+      } else {
+        setAwsVerified(false);
+        setAwsVerifyMessage(data.detail || "Verification failed. Check your credentials.");
+      }
+    } catch (err: any) {
+      setAwsVerified(false);
+      setAwsVerifyMessage(err.message || "Failed to connect to verification API.");
+    } finally {
+      setVerifyingAws(false);
+    }
+  };
+
+  const startDeployProgressStream = (depId: string) => {
+    setDeployStatus('deploying');
+    const es = new EventSource(`${api.getApiBaseUrl()}/api/v1/deploy/stream/${depId}`);
+    
+    es.addEventListener('deployment', (event: any) => {
+      try {
+        const data = JSON.parse(event.data);
+        setDeployLogs(data.logs || []);
+        setDeployStatus(data.status);
+        if (data.status === 'completed') {
+          setLiveUrl(data.url);
+          setDeployDuration(data.duration_seconds);
+          es.close();
+          fetchDeployHistory();
+        } else if (data.status === 'failed' || data.status === 'destroyed') {
+          es.close();
+          fetchDeployHistory();
+        }
+      } catch (err) {
+        console.error("Failed to parse SSE deploy message", err);
+      }
+    });
+
+    es.onerror = () => {
+      es.close();
+    };
+  };
+
+  const handleTriggerDeploy = async () => {
+    if (!result || !awsAccessKey || !awsSecretKey || !serviceNameInput) return;
+    setTriggeringDeploy(true);
+    setDeployLogs([]);
+    try {
+      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${api.getToken()}`
+        },
+        body: JSON.stringify({
+          repository_url: result.repository_url,
+          repository_name: result.repository_name,
+          access_key: awsAccessKey,
+          secret_key: awsSecretKey,
+          region: awsRegionSelect,
+          service_name: serviceNameInput
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setDeploymentId(data.deployment_id);
+        startDeployProgressStream(data.deployment_id);
+      } else {
+        alert(data.detail || "Failed to trigger deployment.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Network error triggering deployment.");
+    } finally {
+      setTriggeringDeploy(false);
+    }
+  };
+
+  const handleDestroyDeploy = async () => {
+    if (!deploymentId) return;
+    setDeployStatus('destroying');
+    try {
+      const response = await fetch(`${api.getApiBaseUrl()}/api/v1/deploy/destroy/${deploymentId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${api.getToken()}`
+        }
+      });
+      if (response.ok) {
+        startDeployProgressStream(deploymentId);
+      } else {
+        alert("Failed to trigger decommissioning.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (authenticated) {
+      fetchDeployHistory();
+    }
+  }, [authenticated]);
+
   useEffect(() => {
     const checkUser = async () => {
       if (api.isAuthenticated()) {
@@ -642,56 +806,316 @@ function App() {
 
                     {/* Sub-Tab 7: IaC Deployment */}
                     {reportsSubTab === 'IaC Deployment' && (
-                      <div className="space-y-8">
-                        {viewMode === 'infrastructure' ? (
-                          <>
-                            <ProgressPanel 
-                              logs={infra.logs} 
-                              progress={infra.progress} 
-                              status={infra.status} 
-                            />
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        
+                        {/* LEFT COLUMN: BLUEPRINTS GENERATOR */}
+                        <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6">
+                          <div className="flex items-center gap-2 border-b border-slate-850 pb-3">
+                            <Layers className="w-5 h-5 text-blue-400" />
+                            <h4 className="text-sm font-bold text-white">1. Terraform IaC Blueprints</h4>
+                          </div>
 
-                            {infra.status === 'completed' && (
-                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                                <div className="lg:col-span-2">
+                          {viewMode === 'infrastructure' ? (
+                            <div className="space-y-6">
+                              <ProgressPanel 
+                                logs={infra.logs} 
+                                progress={infra.progress} 
+                                status={infra.status} 
+                              />
+
+                              {infra.status === 'completed' && (
+                                <div className="space-y-6">
                                   <InfrastructurePreview 
                                     files={infra.generatedFiles} 
                                     downloadUrl={infra.downloadUrl} 
                                   />
-                                </div>
-                                <div>
                                   <ValidationReportCard 
                                     score={infra.validationScore} 
                                     results={infra.validationResults} 
                                   />
                                 </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="glass-panel p-8 rounded-2xl text-center flex flex-col justify-center items-center space-y-6 max-w-xl mx-auto glow-blue">
-                            <div className="w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                              )}
                             </div>
-                            <div>
-                              <h3 className="text-base font-bold text-white">Generate Terraform IaC Blueprints</h3>
-                              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                                Trigger the Multi-Agent packaging node to construct VPC, private network, subnet, compute, and RDS database Terraform .tf configurations for direct zip download.
+                          ) : (
+                            <div className="text-center py-8 space-y-5">
+                              <p className="text-xs text-slate-400 leading-relaxed">
+                                Generate structured VPC subnets, routing configuration, security groups, and database hosting infrastructure files for offline auditing.
                               </p>
+                              <button 
+                                onClick={() => {
+                                  setViewMode('infrastructure');
+                                  infra.startGeneration(result.repository_url);
+                                }}
+                                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-750 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md mx-auto"
+                              >
+                                ⚡ Generate Terraform Blueprints
+                              </button>
                             </div>
-                            <button 
-                              onClick={() => {
-                                setViewMode('infrastructure');
-                                infra.startGeneration(result.repository_url);
-                              }}
-                              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-blue-500/15"
-                            >
-                              ⚡ Generate Terraform Configs
-                            </button>
+                          )}
+                        </div>
+
+                        {/* RIGHT COLUMN: LIVE DEPLOY MVP */}
+                        <div className="glass-panel p-6 rounded-2xl border border-slate-800/40 space-y-6">
+                          <div className="flex items-center gap-2 border-b border-slate-850 pb-3 justify-between">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-5 h-5 text-emerald-400" />
+                              <h4 className="text-sm font-bold text-white">2. CloudPilot Live Deploy</h4>
+                            </div>
+                            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 font-extrabold px-2 py-0.5 rounded border border-emerald-500/10 uppercase tracking-wider">
+                              AWS App Runner MVP
+                            </span>
                           </div>
-                        )}
+
+                          {/* IDLE STATE: AWS CONFIG & REVIEW */}
+                          {deployStatus === 'idle' && (
+                            <div className="space-y-6">
+                              {/* AWS Credentials Connection form */}
+                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-4">
+                                <span className="text-xs font-bold text-white block">AWS Account Connection</span>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] text-slate-450 font-bold">AWS Access Key ID</label>
+                                    <input 
+                                      type="password" 
+                                      value={awsAccessKey}
+                                      onChange={(e) => setAwsAccessKey(e.target.value)}
+                                      placeholder="AKIA..."
+                                      className="glass-input px-3 py-1.5 rounded-lg text-xs"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <label className="text-[10px] text-slate-450 font-bold">AWS Secret Access Key</label>
+                                    <input 
+                                      type="password" 
+                                      value={awsSecretKey}
+                                      onChange={(e) => setAwsSecretKey(e.target.value)}
+                                      placeholder="Secret Key"
+                                      className="glass-input px-3 py-1.5 rounded-lg text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                  <div className="flex flex-col gap-1 flex-1">
+                                    <label className="text-[10px] text-slate-400 font-bold">AWS Deployment Region</label>
+                                    <select 
+                                      value={awsRegionSelect}
+                                      onChange={(e) => setAwsRegionSelect(e.target.value)}
+                                      className="glass-input px-3 py-1.5 rounded-lg text-xs bg-slate-900 border border-slate-800"
+                                    >
+                                      <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+                                      <option value="us-east-1">us-east-1 (N. Virginia)</option>
+                                      <option value="us-west-2">us-west-2 (Oregon)</option>
+                                      <option value="eu-west-1">eu-west-1 (Ireland)</option>
+                                    </select>
+                                  </div>
+                                  <button
+                                    onClick={handleVerifyAWS}
+                                    disabled={verifyingAws || !awsAccessKey || !awsSecretKey}
+                                    className="px-4 py-2 mt-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                  >
+                                    {verifyingAws ? "Verifying..." : "Verify Keys"}
+                                  </button>
+                                </div>
+
+                                {awsVerifyMessage && (
+                                  <div className={`text-[10px] p-2 rounded ${awsVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                    {awsVerifyMessage}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Deployment Review details */}
+                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-3">
+                                <span className="text-xs font-bold text-white block">Deployment Specifications Review</span>
+                                
+                                <div className="space-y-2 text-xs">
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-slate-400">Target Service</span>
+                                    <span className="font-bold text-slate-200">AWS App Runner</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-slate-400">Estimated Cost</span>
+                                    <span className="font-bold text-blue-400">$35.86 / month</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-slate-400">Resources to create</span>
+                                    <span className="font-mono text-cyan-400">aws_apprunner_service.app</span>
+                                  </div>
+                                  <div className="flex flex-col gap-1.5 pt-2">
+                                    <label className="text-[10px] text-slate-450 font-bold">AWS App Runner Service Name</label>
+                                    <input 
+                                      type="text" 
+                                      value={serviceNameInput}
+                                      onChange={(e) => setServiceNameInput(e.target.value)}
+                                      placeholder="Service identifier"
+                                      className="glass-input px-3 py-2 rounded-xl text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={handleTriggerDeploy}
+                                disabled={!awsVerified || triggeringDeploy || !serviceNameInput}
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-emerald-500/10"
+                              >
+                                {triggeringDeploy ? "Triggering..." : "🚀 Confirm & Deploy Live"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* ACTIVE DEPLOYING / STREAMING STATE */}
+                          {(deployStatus === 'deploying' || deployStatus === 'destroying') && (
+                            <div className="space-y-6">
+                              <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/15 rounded-xl text-blue-300 text-xs">
+                                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                                <span>
+                                  {deployStatus === 'deploying' 
+                                    ? "Deployment is active. Coordinated agents executing Terraform commands..." 
+                                    : "Decommissioning App Runner infrastructure..."}
+                                </span>
+                              </div>
+
+                              <div className="space-y-4">
+                                {deployLogs.map((log, idx) => (
+                                  <div key={idx} className="flex justify-between items-center text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${
+                                        log.status === 'completed' ? 'bg-emerald-500' : log.status === 'in_progress' ? 'bg-blue-500 animate-ping' : 'bg-slate-700'
+                                      }`} />
+                                      <span className="font-semibold text-slate-300">{log.stage}</span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-500">{log.message}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* COMPLETED SUCCESS RESULTS */}
+                          {deployStatus === 'completed' && (
+                            <div className="space-y-6">
+                              <div className="flex items-center gap-2.5 p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-xl text-emerald-400 text-xs">
+                                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                                <div>
+                                  <span className="font-bold block">AWS Deployment Finalized Successfully!</span>
+                                  <span className="text-[10px] text-slate-400 mt-1 block">Live App URL is active and listening for web request pings.</span>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-slate-950/20 border border-slate-900/60 rounded-xl space-y-3 text-xs leading-relaxed">
+                                <div className="flex justify-between items-center border-b border-slate-850 pb-2">
+                                  <span className="text-slate-400">Live Application URL</span>
+                                  <a 
+                                    href={liveUrl || '#'} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="font-bold text-cyan-400 hover:underline"
+                                  >
+                                    Visit Application
+                                  </a>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400">AWS Resources created</span>
+                                  <span className="font-mono text-[10px] text-slate-300">aws_apprunner_service.app</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400">Total deployment duration</span>
+                                  <span className="font-semibold text-slate-200">{deployDuration} seconds</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-400">Estimated billing tier</span>
+                                  <span className="font-extrabold text-blue-400">$35.86 / mo (USD)</span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <button
+                                  onClick={() => setDeployStatus('idle')}
+                                  className="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white text-xs font-bold transition-all cursor-pointer text-center"
+                                >
+                                  Redeploy service
+                                </button>
+                                <button
+                                  onClick={handleDestroyDeploy}
+                                  className="py-2.5 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 border border-rose-600/20 text-rose-400 text-xs font-bold transition-all cursor-pointer text-center"
+                                >
+                                  Destroy resources
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* FAILURE RESULTS */}
+                          {deployStatus === 'failed' && (
+                            <div className="space-y-6">
+                              <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/15 rounded-xl text-rose-300 text-xs">
+                                <AlertCircle className="w-5 h-5 shrink-0" />
+                                <span className="font-bold">AWS Deployment Failed. Audit logs below.</span>
+                              </div>
+
+                              <button
+                                onClick={() => setDeployStatus('idle')}
+                                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
+                              >
+                                Try Deploy again
+                              </button>
+                            </div>
+                          )}
+
+                          {/* DESTROYED STATE */}
+                          {deployStatus === 'destroyed' && (
+                            <div className="space-y-6 text-center py-6">
+                              <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 border border-slate-850 mx-auto">
+                                <AlertCircle className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-white">Infrastructure Decommissioned</h4>
+                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                                  All App Runner deployment environments and variables configurations were successfully destroyed from AWS.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setDeployStatus('idle')}
+                                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold cursor-pointer transition-all"
+                              >
+                                Deploy New Environment
+                              </button>
+                            </div>
+                          )}
+                          {/* DEPLOYMENT HISTORY LIST PANEL */}
+                          {deployHistory.length > 0 && (
+                            <div className="pt-4 border-t border-slate-850 space-y-3">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Deployment History</span>
+                              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                {deployHistory.map((dep, idx) => (
+                                  <div key={idx} className="p-2.5 bg-slate-950/20 border border-slate-900/50 rounded-lg flex justify-between items-center text-[10px]">
+                                    <div>
+                                      <span className="font-bold text-slate-350 block">{dep.service_name || dep.repo_name}</span>
+                                      <span className="text-slate-500 text-[9px]">{dep.region} &middot; {new Date(dep.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {dep.status === 'completed' && (
+                                        <a href={dep.url} target="_blank" rel="noreferrer" className="text-cyan-400 hover:underline">
+                                          Link
+                                        </a>
+                                      )}
+                                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold border ${
+                                        dep.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : dep.status === 'failed' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
+                                      }`}>
+                                        {dep.status.toUpperCase()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+
                       </div>
                     )}
 

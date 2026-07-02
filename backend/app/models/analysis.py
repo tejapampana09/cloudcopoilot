@@ -24,3 +24,14 @@ class Generation(Base):
     created_at = Column(DateTime, server_default=func.now())
     
     user = relationship("User", back_populates="generations")
+
+class Deployment(Base):
+    __tablename__ = "deployments"
+    
+    deployment_id = Column(String(255), primary_key=True, index=True)
+    data = Column(Text, nullable=False)
+    status = Column(String(50), default="pending")
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    
+    user = relationship("User", back_populates="deployments")
