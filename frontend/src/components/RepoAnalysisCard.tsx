@@ -20,7 +20,10 @@ export const RepoAnalysisCard: React.FC<RepoAnalysisCardProps> = ({ result }) =>
     { label: 'Package Manager', value: metadata.package_managers.length > 0 ? metadata.package_managers[0] : 'None' },
     { label: 'Database', value: metadata.databases.length > 0 ? metadata.databases[0] : 'None Detected' },
     { label: 'Docker', value: metadata.docker_readiness ? 'Detected' : 'Missing' },
-    { label: 'Deployment', value: result.recommendation.target }
+    { label: 'Total Commits', value: metadata.total_commits !== undefined ? String(metadata.total_commits) : '1' },
+    { label: 'Contributors', value: metadata.contributors_count !== undefined ? String(metadata.contributors_count) : '1' },
+    { label: 'Tech Debt Score', value: metadata.technical_debt_score !== undefined ? `${metadata.technical_debt_score}/100` : '40/100' },
+    { label: 'Complexity Index', value: metadata.complexity_index || 'Medium' }
   ];
 
   return (

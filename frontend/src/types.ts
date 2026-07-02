@@ -21,6 +21,10 @@ export interface RepoMetadata {
   build_commands: string[];
   run_commands: string[];
   test_frameworks: string[];
+  total_commits?: number;
+  contributors_count?: number;
+  technical_debt_score?: number;
+  complexity_index?: 'Low' | 'Medium' | 'High';
 }
 
 export interface CostBreakdown {

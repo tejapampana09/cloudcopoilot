@@ -12,10 +12,34 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
+def start_cleanup_scheduler():
+    import threading
+    import time
+    import shutil
+    def cleanup_worker():
+        while True:
+            try:
+                temp_dir = settings.TEMP_CLONE_DIR
+                if os.path.exists(temp_dir):
+                    now = time.time()
+                    for item in os.listdir(temp_dir):
+                        item_path = os.path.join(temp_dir, item)
+                        if os.path.isdir(item_path):
+                            mtime = os.path.getmtime(item_path)
+                            if now - mtime > 3600:
+                                shutil.rmtree(item_path, ignore_errors=True)
+            except Exception:
+                pass
+            time.sleep(300)
+            
+    t = threading.Thread(target=cleanup_worker, daemon=True)
+    t.start()
+
 # Initialize SQLite database tables on startup
 @app.on_event("startup")
 def on_startup():
     init_db()
+    start_cleanup_scheduler()
 
 # Restrict CORS origins: browsers reject allow_origins=["*"] when allow_credentials=True
 origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]

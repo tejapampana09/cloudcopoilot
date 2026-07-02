@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquareCode, Sparkles, Loader2 } from 'lucide-react';
 import type { AnalysisResult } from '../types';
+import { api } from '../services/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,9 +11,10 @@ interface Message {
 
 interface AIConsultantChatProps {
   result: AnalysisResult;
+  taskId: string;
 }
 
-export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result }) => {
+export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result, taskId }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -49,63 +51,20 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result }) =>
     setIsLoading(true);
 
     try {
-      // For now, we simulate consultant answers based on real metadata.
-      // In Phase 3, this will be connected to the backend RAG semantic engine.
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const answer = await api.chatWithRepository(taskId, textToSend);
       
-      let answer = "";
-      const text = textToSend.toLowerCase();
-
-      if (text.includes("boundary") || text.includes("architecture") || text.includes("structure")) {
-        answer = `### Repository Architectural Boundaries\n\n` +
-                 `Based on the analysis, this is a **${result.metadata.frontend.length > 0 && result.metadata.backend.length > 0 ? "Fullstack" : result.metadata.backend.length > 0 ? "Backend" : "Frontend"}** project structure:\n\n` +
-                 `- **Frontend Layer:** ${result.metadata.frontend.join(', ') || 'None detected'}\n` +
-                 `- **Backend Service Layer:** ${result.metadata.backend.join(', ') || 'None detected'}\n` +
-                 `- **Databases:** ${result.metadata.databases.join(', ') || 'None configured'}\n\n` +
-                 `The recommended AWS target is **${result.recommendation.target}** due to container and scaling readiness.`;
-      } else if (text.includes("bottleneck") || text.includes("risk") || text.includes("issue")) {
-        const has_sqlite = result.metadata.databases.includes("SQLite");
-        const has_uploads = result.metadata.infrastructure_files.some(f => f.toLowerCase().includes("multer") || f.toLowerCase().includes("upload"));
-        
-        answer = `### Audited Repository Bottlenecks\n\n` +
-                 `Here are the core concerns identified during repository static scanning:\n\n` +
-                 `1. **Stateless Scale Constraints:** ${has_sqlite ? "Uses SQLite which locks writes under concurrency and blocks container scaling." : "None. PostgreSQL/MySQL allows scaling."}\n` +
-                 `2. **Stateful Writes:** ${has_uploads ? "Local file upload operations detected. These will disappear when containers scale horizontally." : "Stateless file upload handlers. Recommend using Amazon S3."}\n` +
-                 `3. **Environment Template:** ${result.metadata.env_variables.length > 0 ? "Has env configs. Ensure no secrets are hardcoded in the codebase." : "No env templates detected."}`;
-      } else if (text.includes("terraform") || text.includes("vpc") || text.includes("blueprint")) {
-        answer = `### Proposed Terraform Configuration Outline\n\n` +
-                 `Here is the recommended IaC configuration setup for **${result.recommendation.target}**:\n\n` +
-                 `\`\`\`hcl\n` +
-                 `# vpc.tf\n` +
-                 `resource "aws_vpc" "main" {\n` +
-                 `  cidr_block           = "10.0.0.0/16"\n` +
-                 `  enable_dns_hostnames = true\n` +
-                 `}\n\n` +
-                 `# compute.tf\n` +
-                 `# Configures AWS ECS Fargate or App Runner resources matching: ${result.recommendation.target}\n` +
-                 `\`\`\`\n\n` +
-                 `You can download the full package files zip from the **Deployments** tab!`;
-      } else {
-        answer = `### Consultant Analysis\n\n` +
-                 `I have analyzed your query: *"${textToSend}"*.\n\n` +
-                 `- **Languages audited:** ${result.metadata.languages.map(l => l.name).join(', ')}\n` +
-                 `- **Frameworks active:** ${result.metadata.frameworks.join(', ') || 'None'}\n` +
-                 `- **Primary compute host:** ${result.recommendation.target}\n\n` +
-                 `Feel free to ask details on ORM settings, cost calculations, database configs, or custom Terraform setups.`;
-      }
-
       const assistantMsg: Message = {
         role: 'assistant',
         content: answer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err) {
+    } catch (err: any) {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error processing your query. Please try again.',
+          content: `Sorry, I encountered an error querying the agent: ${err.message || 'Unknown error'}. Please try again.`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -141,22 +100,22 @@ export const AIConsultantChat: React.FC<AIConsultantChatProps> = ({ result }) =>
           const isUser = msg.role === 'user';
           return (
             <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
                 isUser 
                   ? 'bg-blue-600 text-white rounded-tr-none' 
                   : 'bg-slate-900/60 border border-slate-800/60 text-slate-200 rounded-tl-none'
               }`}>
-                {/* Parse simple markdown format */}
+                {/* Parse markdown format */}
                 <div className="space-y-2">
                   {msg.content.split('\n\n').map((para, pIdx) => {
                     if (para.startsWith('### ')) {
                       return <h5 key={pIdx} className="font-bold text-white text-xs mt-2">{para.replace('### ', '')}</h5>;
                     }
-                    if (para.startsWith('- ')) {
+                    if (para.startsWith('- ') || para.startsWith('* ')) {
                       return (
                         <ul key={pIdx} className="list-disc pl-4 space-y-1">
                           {para.split('\n').map((li, lIdx) => (
-                            <li key={lIdx}>{li.replace('- ', '')}</li>
+                            <li key={lIdx}>{li.replace(/^[\-\*]\s+/, '')}</li>
                           ))}
                         </ul>
                       );

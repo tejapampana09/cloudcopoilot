@@ -121,5 +121,21 @@ export const api = {
   getInfrastructureDownloadUrl: (generationId: string): string => {
     const token = api.getToken();
     return `${API_BASE_URL}/api/v1/infrastructure/download/${generationId}${token ? `?token=${token}` : ''}`;
+  },
+
+  chatWithRepository: async (taskId: string, message: string): Promise<string> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/analyze/chat`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ task_id: taskId, message }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to chat with repository.');
+    }
+
+    const data = await response.json();
+    return data.response;
   }
 };

@@ -194,6 +194,54 @@ class HeuristicScanner:
                 run_commands.append("npm start")
                 build_commands.append("npm install")
 
+        # Git Analytics
+        total_commits = 1
+        contributors_count = 1
+        try:
+            import subprocess
+            # Get commit count
+            git_count_res = subprocess.run(
+                ["git", "-C", dir_path, "rev-list", "--count", "HEAD"],
+                capture_output=True, text=True, timeout=5.0
+            )
+            if git_count_res.returncode == 0:
+                total_commits = int(git_count_res.stdout.strip())
+            
+            # Get contributors count
+            git_contrib_res = subprocess.run(
+                ["git", "-C", dir_path, "log", "--format=%ae"],
+                capture_output=True, text=True, timeout=5.0
+            )
+            if git_contrib_res.returncode == 0:
+                authors = [a.strip() for a in git_contrib_res.stdout.split('\n') if a.strip()]
+                contributors_count = len(set(authors))
+        except Exception:
+            pass
+
+        # Compute complexity and technical debt indices
+        num_files = len(all_files)
+        num_languages = len(languages_list)
+        
+        complexity_points = num_files * 0.4 + num_languages * 5
+        if complexity_points > 80:
+            complexity_index = "High"
+        elif complexity_points > 30:
+            complexity_index = "Medium"
+        else:
+            complexity_index = "Low"
+            
+        # Tech Debt score (0 to 100)
+        debt_score = 40
+        if not has_dockerfile:
+            debt_score += 15
+        if not ci_cd_systems:
+            debt_score += 10
+        if "SQLite" in databases:
+            debt_score += 15
+        if has_terraform:
+            debt_score -= 10
+        debt_score = max(5, min(95, debt_score))
+
         return RepoMetadata(
             languages=languages_list,
             frameworks=frameworks,
@@ -212,6 +260,10 @@ class HeuristicScanner:
             build_commands=build_commands,
             run_commands=run_commands,
             test_frameworks=test_frameworks,
+            total_commits=total_commits,
+            contributors_count=contributors_count,
+            technical_debt_score=debt_score,
+            complexity_index=complexity_index,
         )
 
     @staticmethod

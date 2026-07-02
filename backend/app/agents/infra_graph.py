@@ -43,11 +43,11 @@ def call_llm(system_prompt: str, user_prompt: str) -> str:
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
-        ("human", user_prompt)
+        ("human", "{content}")
     ])
     
     chain = prompt | llm
-    response = chain.invoke({})
+    response = chain.invoke({"content": user_prompt})
     return response.content.strip()
 
 # Nodes

@@ -31,6 +31,10 @@ class RepoMetadata(BaseModel):
     build_commands: List[str] = Field(default_factory=list)
     run_commands: List[str] = Field(default_factory=list)
     test_frameworks: List[str] = Field(default_factory=list)
+    total_commits: int = 0
+    contributors_count: int = 0
+    technical_debt_score: int = 50
+    complexity_index: str = "Medium"
 
 class CostBreakdown(BaseModel):
     compute: float

@@ -579,8 +579,8 @@ def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[
         # Run graph
         final_state = graph.invoke(initial_state)
         
-        # Cleanup cloned directory
-        GitService.cleanup_directory(clone_path)
+        # Cleanup cloned directory - deferred to cleanup job for RAG chat context
+        # GitService.cleanup_directory(clone_path)
         
         if final_state.get('error'):
             analysis_tasks[task_id]["status"] = "failed"

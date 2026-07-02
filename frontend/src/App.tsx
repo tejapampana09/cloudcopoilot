@@ -21,7 +21,7 @@ import { Login } from './components/Login';
 import { api } from './services/api';
 
 function App() {
-  const { status, logs, result, error, startAnalysis, reset } = useAnalysisStream();
+  const { status, logs, result, error, startAnalysis, reset, taskId } = useAnalysisStream();
   const [viewMode, setViewMode] = useState<'analyzer' | 'infrastructure'>('analyzer');
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const infra = useInfrastructureStream();
@@ -292,7 +292,7 @@ function App() {
               {/* TAB 4: AI CONSULTANT */}
               {activeTab === 'AI consultant' && result && (
                 <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
-                  <AIConsultantChat result={result} />
+                  <AIConsultantChat result={result} taskId={taskId || ''} />
                 </div>
               )}
 

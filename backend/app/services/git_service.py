@@ -81,7 +81,7 @@ class GitService:
             
             # Perform shallow clone via subprocess with 30s timeout
             result = subprocess.run(
-                ["git", "clone", "--depth", "1", "--single-branch", clean_url, clone_path],
+                ["git", "clone", "--depth", "50", "--single-branch", clean_url, clone_path],
                 capture_output=True,
                 text=True,
                 timeout=30.0
