@@ -3,6 +3,8 @@ from typing import List, Dict, Any, Optional
 
 class AnalyzeRequest(BaseModel):
     repository_url: str = Field(..., description="The HTTPS or SSH URL of the public GitHub repository")
+    branch: Optional[str] = Field(default=None, description="The specific git branch to clone/analyze")
+    pat: Optional[str] = Field(default=None, description="Personal Access Token for cloning private repositories")
 
 class AnalyzeResponse(BaseModel):
     task_id: str = Field(..., description="The unique task identifier for the analysis")
@@ -81,6 +83,12 @@ class FixSuggestion(BaseModel):
     suggested_solution: str
     example_code: str
     confidence_score: int
+    severity: Optional[str] = "High"
+    explanation: Optional[str] = None
+    affected_lines: Optional[str] = "1"
+    why_it_matters: Optional[str] = None
+    fix_recommendation: Optional[str] = None
+    patch: Optional[str] = None
 
 class SecurityIssue(BaseModel):
     issue_type: str
@@ -88,6 +96,11 @@ class SecurityIssue(BaseModel):
     description: str
     affected_files: List[str]
     suggested_fix: str
+    explanation: Optional[str] = None
+    affected_lines: Optional[str] = "1"
+    why_it_matters: Optional[str] = None
+    fix_recommendation: Optional[str] = None
+    patch: Optional[str] = None
 
 class PerformanceIssue(BaseModel):
     issue_type: str
@@ -95,6 +108,11 @@ class PerformanceIssue(BaseModel):
     description: str
     affected_files: List[str]
     suggested_fix: str
+    explanation: Optional[str] = None
+    affected_lines: Optional[str] = "1"
+    why_it_matters: Optional[str] = None
+    fix_recommendation: Optional[str] = None
+    patch: Optional[str] = None
 
 class DocumentationSection(BaseModel):
     readme: str

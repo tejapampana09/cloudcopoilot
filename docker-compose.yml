@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - JWT_SECRET=${JWT_SECRET:-a1803b4e3c4265ac29a23d45bf4f6c539fff4ecb33f88628c2f350e988fe0fc4}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-refresh_a1803b4e3c4265ac29a23d45bf4f6c539fff4ecb33f88628c2f350e988fe0fc4}
+      - BACKEND_CORS_ORIGINS=["http://localhost", "http://localhost:80", "http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
+    volumes:
+      - backend_db:/app/data
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  backend_db:

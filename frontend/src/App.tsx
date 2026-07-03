@@ -134,6 +134,46 @@ const ComputeCompareChart: React.FC<{ recommendedTarget: string }> = ({
   );
 };
 
+// Premium Interactive Diff & Patch Viewer Component
+const PatchDiffViewer: React.FC<{ patch: string }> = ({ patch }) => {
+  if (!patch) return null;
+  
+  const isDiff = patch.includes('\n-') || patch.includes('\n+') || patch.startsWith('---') || patch.startsWith('diff');
+  
+  if (isDiff) {
+    const lines = patch.split('\n');
+    return (
+      <div className="border border-slate-200 rounded-xl overflow-hidden font-mono text-[10px] leading-relaxed shadow-inner bg-slate-50">
+        <div className="bg-slate-100 px-4 py-2 text-[9px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+          Git Patch Diff View
+        </div>
+        <div className="p-4 overflow-x-auto max-h-96">
+          {lines.map((line, idx) => {
+            let className = "text-slate-600 block";
+            if (line.startsWith('+') && !line.startsWith('+++')) {
+              className = "bg-emerald-50 text-emerald-700 px-1.5 border-l-2 border-emerald-500 block";
+            } else if (line.startsWith('-') && !line.startsWith('---')) {
+              className = "bg-rose-50 text-rose-700 px-1.5 border-l-2 border-rose-500 block line-through";
+            }
+            return <div key={idx} className={className}>{line}</div>;
+          })}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden font-mono text-[10px] leading-relaxed shadow-inner bg-slate-50">
+      <div className="bg-slate-100 px-4 py-2 text-[9px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200 flex justify-between items-center">
+        <span>Suggested Code Solution</span>
+      </div>
+      <pre className="p-4 overflow-x-auto max-h-96 text-blue-600">
+        <code>{patch}</code>
+      </pre>
+    </div>
+  );
+};
+
 function App() {
   const { status, logs, result, error, startAnalysis, reset, taskId } = useAnalysisStream();
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
@@ -147,6 +187,26 @@ function App() {
   // Settings states
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('cloudpilot_openai_key') || '');
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
+
+  // Theme states
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const cached = localStorage.getItem('cloudpilot_dark_mode');
+    return cached === 'true';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (darkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('cloudpilot_dark_mode', String(darkMode));
+  }, [darkMode]);
+
+  const handleToggleDark = () => {
+    setDarkMode(!darkMode);
+  };
 
   // New selected bug state
   const [selectedBugIndex, setSelectedBugIndex] = useState<number>(0);
@@ -296,6 +356,8 @@ function App() {
           status={status} 
           userEmail={currentUser?.email}
           onLogout={handleLogout}
+          darkMode={darkMode}
+          onToggleDark={handleToggleDark}
         />
 
         {/* Inner Scrollable Workspace */}
@@ -455,15 +517,41 @@ function App() {
                       </div>
                     </div>
 
-                    <button 
-                      onClick={handleResetAll}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                    >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3-3-3" />
-                      </svg>
-                      Scan Different Repo
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a 
+                        href={`${api.getApiBaseUrl()}/analyze/export/pdf/${taskId}?token=${api.getToken() || localStorage.getItem('cloudpilot_jwt_token')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold transition-all shadow-sm"
+                      >
+                        Export PDF
+                      </a>
+                      <a 
+                        href={`${api.getApiBaseUrl()}/analyze/export/markdown/${taskId}?token=${api.getToken() || localStorage.getItem('cloudpilot_jwt_token')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-[10px] font-bold transition-all shadow-sm"
+                      >
+                        Export Markdown
+                      </a>
+                      <a 
+                        href={`${api.getApiBaseUrl()}/analyze/export/json/${taskId}?token=${api.getToken() || localStorage.getItem('cloudpilot_jwt_token')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-[10px] font-bold transition-all shadow-sm"
+                      >
+                        Export JSON
+                      </a>
+                      <button 
+                        onClick={handleResetAll}
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600 flex items-center gap-1 transition-all cursor-pointer shadow-sm ml-2"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3-3-3" />
+                        </svg>
+                        Scan Different Repo
+                      </button>
+                    </div>
                   </div>
 
                   {/* Reports Sub-Tab Panel Selection Header */}
@@ -673,12 +761,10 @@ function App() {
                                   <span className="font-bold text-slate-850 block">Suggested Solution:</span>
                                   <p className="text-slate-500 mt-1 leading-relaxed">{result.bugs[selectedBugIndex].suggested_solution}</p>
                                 </div>
-                                {result.bugs[selectedBugIndex].example_code && (
+                                {(result.bugs[selectedBugIndex].patch || result.bugs[selectedBugIndex].example_code) && (
                                   <div>
-                                    <span className="font-bold text-slate-850 block mb-2">Example Fix Code:</span>
-                                    <pre className="p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[10px] text-blue-600 overflow-x-auto leading-relaxed shadow-inner">
-                                      {result.bugs[selectedBugIndex].example_code}
-                                    </pre>
+                                    <span className="font-bold text-slate-850 block mb-2">Code Fix & Patch:</span>
+                                    <PatchDiffViewer patch={result.bugs[selectedBugIndex].patch || result.bugs[selectedBugIndex].example_code} />
                                   </div>
                                 )}
                               </div>
@@ -761,6 +847,12 @@ function App() {
                                   <span className="font-bold text-slate-850 block">Suggested Fix:</span>
                                   <p className="text-slate-500 mt-1 leading-relaxed bg-blue-50/20 p-2.5 rounded-lg border border-blue-100/30">{issue.suggested_fix}</p>
                                 </div>
+                                {issue.patch && (
+                                  <div className="mt-3">
+                                    <span className="font-bold text-slate-850 block mb-2">Security Fix Patch:</span>
+                                    <PatchDiffViewer patch={issue.patch} />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -807,6 +899,12 @@ function App() {
                                 <span className="font-bold text-slate-850 block">Suggested Fix:</span>
                                 <p className="text-slate-500 mt-1 leading-relaxed bg-cyan-50/10 p-2.5 rounded-lg border border-cyan-100/30">{issue.suggested_fix}</p>
                               </div>
+                              {issue.patch && (
+                                <div className="mt-3">
+                                  <span className="font-bold text-slate-850 block mb-2">Performance Fix Patch:</span>
+                                  <PatchDiffViewer patch={issue.patch} />
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}

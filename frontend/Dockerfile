@@ -9,6 +9,10 @@ RUN npm run build
 # Serve stage using Nginx
 FROM nginx:stable-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-# Default nginx configuration can be copied if custom routing is needed
 EXPOSE 80
+
+# Healthy check for static file server
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --quiet --spider http://localhost:80/index.html || exit 1
+
 CMD ["nginx", "-g", "daemon off;"]

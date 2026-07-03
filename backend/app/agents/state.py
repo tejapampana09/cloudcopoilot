@@ -8,6 +8,8 @@ class AnalyzerState(TypedDict, total=False):
     owner: str
     repo_name: str
     clone_path: str
+    branch: Optional[str]
+    pat: Optional[str]
     metadata: Optional[RepoMetadata]
     recommendation: Optional[DeploymentRecommendation]
     health_score: Optional[int]

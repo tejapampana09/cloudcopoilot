@@ -1,9 +1,14 @@
+import json
+import datetime
+import logging
 from typing import List, Optional
 from app.schemas.architecture import (
     ArchitectureSummary, AWSRecommendationDetail, VisualizationJSON, 
     VisualizationNode, VisualizationConnection, ArchitectureReport, RepositoryContext
 )
 from app.schemas.analyzer import RepoMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class ReportGenerator:
@@ -170,3 +175,167 @@ class ReportGenerator:
             edges = [edge for edge in edges if edge.source != 'frontend' and edge.target != 'frontend']
 
         return VisualizationJSON(nodes=nodes, connections=edges)
+
+    @staticmethod
+    def export_json(task_data: dict) -> str:
+        """Serializes task data to JSON format."""
+        def custom_serializer(o):
+            if isinstance(o, datetime.datetime):
+                return o.isoformat()
+            raise TypeError(f"Object of type {type(o)} is not JSON serializable")
+        return json.dumps(task_data, default=custom_serializer, indent=2)
+
+    @staticmethod
+    def export_markdown(task_data: dict) -> str:
+        """Generates a comprehensive markdown report for the task data."""
+        meta = task_data.get("metadata") or {}
+        rec = task_data.get("recommendation") or {}
+        health = task_data.get("health_score") or 80
+        
+        md = []
+        md.append(f"# CloudPilot AI Solution Architect Report")
+        md.append(f"**Repository**: {task_data.get('repository_url')}")
+        md.append(f"**Generated At**: {task_data.get('analysis_time') or 'N/A'}")
+        md.append(f"**Overall Repository Health Score**: {health}/100\n")
+        
+        md.append(f"## Executive Summary")
+        summary_info = task_data.get("executive_summary") or {}
+        md.append(summary_info.get("summary", "No summary generated."))
+        md.append("")
+        
+        md.append(f"## AWS Cloud Architecture Recommendation")
+        md.append(f"**Recommended Target Compute**: {rec.get('target', 'N/A')}")
+        md.append(f"**Estimated Monthly Cost**: ${rec.get('estimated_monthly_cost', 0.0):.2f}/mo")
+        md.append(f"**Justification**: {rec.get('why', 'N/A')}\n")
+        
+        md.append(f"## Code Quality Audit (Bugs)")
+        bugs = task_data.get("bugs") or []
+        if bugs:
+            for b in bugs:
+                md.append(f"### {b.get('problem')}")
+                md.append(f"- **Severity**: {b.get('severity', 'Medium')}")
+                md.append(f"- **Affected Files**: {', '.join(b.get('affected_files', []))}")
+                md.append(f"- **Lines**: {b.get('affected_lines', 'N/A')}")
+                md.append(f"- **Why it matters**: {b.get('why_it_matters', 'N/A')}")
+                md.append(f"- **Recommendation**: {b.get('fix_recommendation', 'N/A')}")
+                md.append(f"- **AI Patch**:\n```\n{b.get('patch', '')}\n```\n")
+        else:
+            md.append("No critical code bugs identified.\n")
+            
+        md.append(f"## Security Review")
+        sec = task_data.get("security_issues") or []
+        if sec:
+            for s in sec:
+                md.append(f"### {s.get('issue_type')}")
+                md.append(f"- **Severity**: {s.get('severity', 'Medium')}")
+                md.append(f"- **Affected Files**: {', '.join(s.get('affected_files', []))}")
+                md.append(f"- **Why it matters**: {s.get('why_it_matters', 'N/A')}")
+                md.append(f"- **Fix**: {s.get('suggested_fix', 'N/A')}")
+                md.append(f"- **AI Patch**:\n```\n{s.get('patch', '')}\n```\n")
+        else:
+            md.append("No security vulnerabilities identified.\n")
+            
+        md.append(f"## Performance & Scalability Reviews")
+        perf = task_data.get("performance_issues") or []
+        if perf:
+            for p in perf:
+                md.append(f"### {p.get('issue_type')}")
+                md.append(f"- **Severity**: {p.get('severity', 'Medium')}")
+                md.append(f"- **Affected Files**: {', '.join(p.get('affected_files', []))}")
+                md.append(f"- **Why it matters**: {p.get('why_it_matters', 'N/A')}")
+                md.append(f"- **Fix**: {p.get('suggested_fix', 'N/A')}")
+                md.append(f"- **AI Patch**:\n```\n{p.get('patch', '')}\n```\n")
+        else:
+            md.append("No performance bottlenecks identified.\n")
+            
+        return "\n".join(md)
+
+    @staticmethod
+    def export_pdf(task_data: dict) -> bytes:
+        """Compiles Solutions Architect report into PDF format using ReportLab."""
+        try:
+            from io import BytesIO
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+            
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+            styles = getSampleStyleSheet()
+            
+            story = []
+            
+            title_style = ParagraphStyle(
+                'TitleStyle',
+                parent=styles['Heading1'],
+                fontSize=20,
+                leading=24,
+                textColor=colors.HexColor('#0f172a'),
+                spaceAfter=15
+            )
+            subtitle_style = ParagraphStyle(
+                'SubTitleStyle',
+                parent=styles['Normal'],
+                fontSize=10,
+                leading=13,
+                textColor=colors.HexColor('#64748b'),
+                spaceAfter=15
+            )
+            h2_style = ParagraphStyle(
+                'H2Style',
+                parent=styles['Heading2'],
+                fontSize=14,
+                leading=17,
+                textColor=colors.HexColor('#1e40af'),
+                spaceBefore=12,
+                spaceAfter=6
+            )
+            body_style = ParagraphStyle(
+                'BodyStyle',
+                parent=styles['Normal'],
+                fontSize=9,
+                leading=13,
+                textColor=colors.HexColor('#334155')
+            )
+            
+            # Header
+            story.append(Paragraph("CloudPilot AI Solutions Architect Report", title_style))
+            story.append(Paragraph(f"Repository: {task_data.get('repository_url')}", subtitle_style))
+            story.append(Paragraph(f"Health Score: {task_data.get('health_score') or 80}/100", subtitle_style))
+            story.append(Spacer(1, 10))
+            
+            # Executive Summary
+            story.append(Paragraph("Executive Summary", h2_style))
+            summary_text = task_data.get("executive_summary", {}).get("summary", "No summary generated.")
+            story.append(Paragraph(summary_text, body_style))
+            story.append(Spacer(1, 10))
+            
+            # AWS Recommendation
+            story.append(Paragraph("AWS Architecture Recommendations", h2_style))
+            rec = task_data.get("recommendation") or {}
+            rec_text = f"<b>Compute Target:</b> {rec.get('target', 'N/A')}<br/><b>Monthly Cost Estimate:</b> ${rec.get('estimated_monthly_cost', 0.0):.2f}<br/><b>Justification:</b> {rec.get('why', 'N/A')}"
+            story.append(Paragraph(rec_text, body_style))
+            story.append(Spacer(1, 10))
+            
+            # Bugs
+            story.append(Paragraph("Identified Code Bugs", h2_style))
+            bugs = task_data.get("bugs") or []
+            if bugs:
+                for idx, b in enumerate(bugs):
+                    bug_text = f"<b>{idx+1}. {b.get('problem')}</b> (Severity: {b.get('severity', 'High')})<br/>Files: {', '.join(b.get('affected_files', []))}<br/>Recommendation: {b.get('fix_recommendation', 'N/A')}"
+                    story.append(Paragraph(bug_text, body_style))
+                    story.append(Spacer(1, 4))
+            else:
+                story.append(Paragraph("No critical bugs identified.", body_style))
+            
+            doc.build(story)
+            buffer.seek(0)
+            return buffer.getvalue()
+            
+        except Exception as e:
+            logger.error(f"Failed to compile report PDF using reportlab: {e}")
+            pdf_fallback = (
+                b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 <<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\n>>\n>>\n/MediaBox [0 0 595.27 841.89]\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 150\n>>\nstream\nBT\n/F1 12 Tf\n70 800 Td\n(CloudPilot AI - Solutions Architect Report) Tj\n0 -20 Td\n(Failed to load ReportLab rendering pipeline. Download raw Markdown report instead.) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000056 00000 n\n0000000111 00000 n\n0000000288 00000 n\ntrailer\n<<\n/Size 5\n/Root 1 0 R\n>>\nstartxref\n490\n%%EOF\n"
+            )
+            return pdf_fallback

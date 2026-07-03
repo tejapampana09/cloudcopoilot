@@ -70,7 +70,12 @@ def repository_agent_node(state: AnalyzerState) -> AnalyzerState:
     add_agent_log(task_id, "Repository Analyzer", "Cloning codebase and running framework scan...", "in_progress")
     
     try:
-        GitService.clone_repository(state['repository_url'], state['clone_path'])
+        GitService.clone_repository(
+            state['repository_url'], 
+            state['clone_path'], 
+            branch=state.get('branch'), 
+            pat=state.get('pat')
+        )
         metadata = HeuristicScanner.scan_repository(state['clone_path'])
         metadata.repo_url = state['repository_url']
         state['metadata'] = metadata
@@ -180,7 +185,12 @@ def security_agent_node(state: AnalyzerState) -> AnalyzerState:
             "- 'severity': 'Critical' | 'High' | 'Medium' | 'Low'\n"
             "- 'description': str\n"
             "- 'affected_files': list of strings\n"
-            "- 'suggested_fix': str"
+            "- 'suggested_fix': str\n"
+            "- 'explanation': str\n"
+            "- 'affected_lines': str\n"
+            "- 'why_it_matters': str\n"
+            "- 'fix_recommendation': str\n"
+            "- 'patch': str (AI git diff patch or code block)"
         )
         user_prompt = (
             f"Frameworks: {metadata.frameworks}\n"
@@ -200,14 +210,24 @@ def security_agent_node(state: AnalyzerState) -> AnalyzerState:
                 "severity": "High",
                 "description": "No explicit JWT token expiration policies detected. Tokens might persist indefinitely.",
                 "affected_files": ["auth.py" if "Python" in str(metadata.languages) else "auth.js"],
-                "suggested_fix": "Add access token expiry configuration (e.g. 15-60 minutes) and use secure httpOnly cookies."
+                "suggested_fix": "Add access token expiry configuration (e.g. 15-60 minutes) and use secure httpOnly cookies.",
+                "explanation": "Access tokens should have a short lifespan (15-60 mins) to prevent session hijacking if leaked.",
+                "affected_lines": "16-25",
+                "why_it_matters": "Indefinite session lifespan enables attackers to use old tokens permanently.",
+                "fix_recommendation": "Configure access token expiry via datetime.timedelta and check it during verification.",
+                "patch": "```python\n# Configure access token expiration\nACCESS_TOKEN_EXPIRE_MINUTES = 60\n```"
             },
             {
                 "issue_type": "CORS",
                 "severity": "Medium",
                 "description": "CORS configurations might permit wildcard origin configurations in dev mode.",
                 "affected_files": ["main.py" if "Python" in str(metadata.languages) else "server.js"],
-                "suggested_fix": "Restrict CORS origins explicitly to authorized client domains in production configurations."
+                "suggested_fix": "Restrict CORS origins explicitly to authorized client domains in production configurations.",
+                "explanation": "Wildcards allow any external site to read endpoint responses in context of authorized credentials.",
+                "affected_lines": "44-55",
+                "why_it_matters": "Allowing all origins opens endpoints to Cross-Origin Resource Sharing exploits.",
+                "fix_recommendation": "Read BACKEND_CORS_ORIGINS env list and validate client domains.",
+                "patch": "```python\n# Restrict CORS origins explicitly\napp.add_middleware(CORSMiddleware, allow_origins=settings.BACKEND_CORS_ORIGINS)\n```"
             }
         ]
 
@@ -268,7 +288,12 @@ def performance_agent_node(state: AnalyzerState) -> AnalyzerState:
             "- 'severity': 'High' | 'Medium' | 'Low'\n"
             "- 'description': str\n"
             "- 'affected_files': list of strings\n"
-            "- 'suggested_fix': str"
+            "- 'suggested_fix': str\n"
+            "- 'explanation': str\n"
+            "- 'affected_lines': str\n"
+            "- 'why_it_matters': str\n"
+            "- 'fix_recommendation': str\n"
+            "- 'patch': str (AI git diff patch or code block)"
         )
         user_prompt = (
             f"Languages: {[l.name for l in metadata.languages]}\n"
@@ -287,7 +312,12 @@ def performance_agent_node(state: AnalyzerState) -> AnalyzerState:
                 "severity": "Medium",
                 "description": "Dependencies list contains heavy packages which impact app startup or bundle sizes.",
                 "affected_files": ["package.json" if "Node" in str(metadata.package_managers) else "requirements.txt"],
-                "suggested_fix": "Audit unused dependencies and prune deprecated node modules or libraries."
+                "suggested_fix": "Audit unused dependencies and prune deprecated node modules or libraries.",
+                "explanation": "Unused or heavy dependencies increase container cold start latency and build/deploy durations.",
+                "affected_lines": "1-20",
+                "why_it_matters": "Increases build bundle size and cold-start times.",
+                "fix_recommendation": "Perform dependency cleanup using depcheck or pip-deptree.",
+                "patch": "```bash\n# Remove unused dependencies\nnpm prune\n```"
             }
         ]
 
@@ -324,7 +354,13 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
             "affected_files": ["Dockerfile"],
             "suggested_solution": "Generate a container layout matching framework specifications.",
             "example_code": "FROM node:18-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]",
-            "confidence_score": 90
+            "confidence_score": 90,
+            "severity": "Medium",
+            "explanation": "Containerizing applications ensures they run identically in all environments, removing local setup variables.",
+            "affected_lines": "1",
+            "why_it_matters": "Inconsistent production runtimes cause configuration drift and 'works on my machine' errors.",
+            "fix_recommendation": "Add a multi-stage Dockerfile optimized for build caches.",
+            "patch": "FROM node:18-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]"
         })
         
     # 2. LLM Call
@@ -332,13 +368,19 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
         sys_prompt = (
             "You are a Quality QA Engineer. Analyze the repository profile and return a list of code bugs or structural flaws.\n"
             "Respond in JSON format with a single key 'bugs' which is a list of objects containing:\n"
-            "- 'problem': str (e.g. 'Missing validations', 'Async issue', 'Broken imports')\n"
+            "- 'problem': str\n"
             "- 'reason': str\n"
             "- 'impact': str\n"
             "- 'affected_files': list of strings\n"
             "- 'suggested_solution': str\n"
             "- 'example_code': str\n"
-            "- 'confidence_score': int (0-100)"
+            "- 'confidence_score': int (0-100)\n"
+            "- 'severity': 'Critical' | 'High' | 'Medium' | 'Low'\n"
+            "- 'explanation': str\n"
+            "- 'affected_lines': str\n"
+            "- 'why_it_matters': str\n"
+            "- 'fix_recommendation': str\n"
+            "- 'patch': str (AI git diff patch or code block)"
         )
         user_prompt = (
             f"Languages: {[l.name for l in metadata.languages]}\n"
@@ -359,7 +401,13 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
                 "affected_files": ["app.py" if "Python" in str(metadata.languages) else "index.js"],
                 "suggested_solution": "Use linters (eslint, flake8) to identify and prune unused imports.",
                 "example_code": "# Before\nimport os, sys, datetime\n# After\nimport os",
-                "confidence_score": 85
+                "confidence_score": 85,
+                "severity": "Low",
+                "explanation": "Unused imports increase script startup footprint and trigger static code smells.",
+                "affected_lines": "1-10",
+                "why_it_matters": "Increases module parsing overhead and codebase bloat.",
+                "fix_recommendation": "Execute standard static code analysis checks during commit phase.",
+                "patch": "```python\n# Before\nimport os, sys, datetime\n# After\nimport os\n```"
             },
             {
                 "problem": "Missing validation constraints on API payloads",
@@ -368,7 +416,13 @@ def cloud_architect_agent_node(state: AnalyzerState) -> AnalyzerState:
                 "affected_files": ["routes.js" if "Node" in str(metadata.package_managers) else "main.py"],
                 "suggested_solution": "Integrate validator schema layers (like Pydantic in Python or Joi in Node).",
                 "example_code": "from pydantic import BaseModel, Field\nclass Payload(BaseModel):\n    username: str = Field(..., min_length=3)",
-                "confidence_score": 92
+                "confidence_score": 92,
+                "severity": "High",
+                "explanation": "Accepting network payloads directly into databases or models raises SQLi/script execution risks.",
+                "affected_lines": "25-38",
+                "why_it_matters": "Malicious clients can pass malformed JSON keys, causing app-wide memory crash failures.",
+                "fix_recommendation": "Integrate structured request schemas (Pydantic / Joi) on all endpoints.",
+                "patch": "```python\nfrom pydantic import BaseModel, Field\nclass Payload(BaseModel):\n    username: str = Field(..., min_length=3)\n```"
             }
         ]
 
@@ -696,7 +750,7 @@ builder.add_edge("executive_agent", END)
 graph = builder.compile()
 
 
-def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[str, Any]:
+def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str, branch: str = None, pat: str = None) -> Dict[str, Any]:
     """
     Executes the compiled LangGraph state machine.
     """
@@ -709,6 +763,8 @@ def run_analysis_pipeline(task_id: str, repo_url: str, clone_path: str) -> Dict[
         owner=owner,
         repo_name=repo_name,
         clone_path=clone_path,
+        branch=branch,
+        pat=pat,
         metadata=None,
         recommendation=None,
         health_score=None,

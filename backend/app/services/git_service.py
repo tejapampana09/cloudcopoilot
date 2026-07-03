@@ -2,8 +2,11 @@ import os
 import re
 import shutil
 import stat
+import logging
 from typing import Tuple
 import git
+
+logger = logging.getLogger(__name__)
 
 class GitServiceError(Exception):
     """Custom exception for Git service errors."""
@@ -61,49 +64,78 @@ class GitService:
                 if not os.path.islink(fp):
                     try:
                         total_size += os.path.getsize(fp)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        logger.warning(f"Could not read size of file {fp}: {e}")
         return total_size / (1024 * 1024)
 
     @staticmethod
-    def clone_repository(repo_url: str, clone_path: str) -> None:
+    def clone_repository(repo_url: str, clone_path: str, branch: str = None, pat: str = None) -> None:
         """
-        Performs a fast, shallow clone of a public GitHub repository.
-        Enforces a 30-second timeout and a 50MB file size limit.
+        Performs a fast, shallow clone of a public or private GitHub repository.
+        Supports Personal Access Token (PAT) and custom branch selection.
+        Enforces a 30-second timeout, 3 retry attempts, and a 50MB file size limit.
         """
         import subprocess
+        import time
         try:
             # Validate URL
             owner, repo_name, clean_url = GitService.validate_and_parse_url(repo_url)
             
+            # If PAT is provided, inject it into the HTTPS clone URL
+            if pat:
+                clean_url = clean_url.replace("https://", f"https://{pat}@")
+            
             # Ensure parent directories exist
             os.makedirs(os.path.dirname(clone_path), exist_ok=True)
             
-            # Perform shallow clone via subprocess with 30s timeout
-            result = subprocess.run(
-                ["git", "clone", "--depth", "50", "--single-branch", clean_url, clone_path],
-                capture_output=True,
-                text=True,
-                timeout=30.0
-            )
+            # Formulate git clone arguments
+            cmd = ["git", "clone", "--depth", "50"]
+            if branch:
+                cmd.extend(["--branch", branch])
+            cmd.extend(["--single-branch", clean_url, clone_path])
             
-            if result.returncode != 0:
-                err = result.stderr.strip()
-                if "Repository not found" in err or "Could not resolve host" in err:
-                    raise GitServiceError("GitHub repository not found. Please verify the URL and ensure it is public.")
-                elif "Permission denied" in err or "terminal prompts disabled" in err:
-                    raise GitServiceError("Access denied. The repository might be private or require authentication.")
-                else:
-                    raise GitServiceError(f"Failed to clone repository: {err}")
+            max_retries = 3
+            logger.info(f"Cloning repository {owner}/{repo_name} (branch: {branch or 'default'}) to {clone_path}...")
+            
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info(f"Clone attempt {attempt} of {max_retries}...")
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=30.0
+                    )
+                    
+                    if result.returncode == 0:
+                        logger.info(f"Repository cloned successfully on attempt {attempt}.")
+                        break
+                    
+                    err = result.stderr.strip()
+                    logger.warning(f"Git clone attempt {attempt} failed: {err}")
+                    
+                    if attempt == max_retries:
+                        if "Repository not found" in err or "Could not resolve host" in err:
+                            raise GitServiceError("GitHub repository not found. Please verify the URL.")
+                        elif "Permission denied" in err or "terminal prompts disabled" in err:
+                            raise GitServiceError("Access denied. The repository might be private or require authentication (PAT).")
+                        else:
+                            raise GitServiceError(f"Failed to clone repository after {max_retries} attempts: {err}")
+                    
+                    # Backoff sleep
+                    time.sleep(attempt * 2)
+                    
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"Git clone attempt {attempt} timed out.")
+                    if attempt == max_retries:
+                        raise GitServiceError("Git clone operation timed out (limit: 30 seconds).")
+                    time.sleep(attempt * 2)
             
             # Enforce 50MB maximum repository size limit
             size_mb = GitService.get_directory_size_mb(clone_path)
             if size_mb > 50.0:
                 raise GitServiceError(f"Repository exceeds the maximum allowed size of 50MB (cloned size: {size_mb:.1f}MB).")
                 
-        except subprocess.TimeoutExpired:
-            GitService.cleanup_directory(clone_path)
-            raise GitServiceError("Git clone operation timed out (limit: 30 seconds).")
         except GitServiceError:
             GitService.cleanup_directory(clone_path)
             raise
@@ -139,5 +171,4 @@ class GitService:
                         os.rmdir(dirpath)
                 os.rmdir(dir_path)
             except Exception as ex:
-                # Log or suppress, we want to fail-safe
-                pass
+                logger.error(f"Fallback directory cleanup failed: {ex}")

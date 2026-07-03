@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from app.core.config import settings
 from app.utils.database import SessionLocal
 from app.models.user import User
-from app.schemas.auth import UserCreate, UserResponse, Token
+from app.schemas.auth import UserCreate, UserResponse, Token, TokenRefreshRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,7 +30,7 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-# JWT generation helper
+# JWT generation helpers
 def create_access_token(data: dict, expires_delta: datetime.timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -39,6 +39,16 @@ def create_access_token(data: dict, expires_delta: datetime.timedelta | None = N
         expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return encoded_jwt
+
+def create_refresh_token(data: dict, expires_delta: datetime.timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.datetime.utcnow() + datetime.timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_REFRESH_SECRET, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
 from fastapi.security import APIKeyQuery
@@ -72,6 +82,18 @@ def get_current_user(
         raise credentials_exception
     return user
 
+class RoleChecker:
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+        
+    def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted for this user role."
+            )
+        return current_user
+
 @router.post("/signup", response_model=UserResponse)
 def signup(user_in: UserCreate, db: Session = Depends(get_db)):
     # Check if user already exists
@@ -98,7 +120,8 @@ def login(user_in: UserCreate, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -112,7 +135,31 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": form_data.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(data={"sub": form_data.username})
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(payload: TokenRefreshRequest, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate refresh token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        data = jwt.decode(payload.refresh_token, settings.JWT_REFRESH_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        email: str = data.get("sub")
+        if email is None:
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+        
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise credentials_exception
+        
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):

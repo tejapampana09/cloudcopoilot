@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     
     # JWT configurations
     JWT_SECRET: str = "a1803b4e3c4265ac29a23d45bf4f6c539fff4ecb33f88628c2f350e988fe0fc4"
+    JWT_REFRESH_SECRET: str = "refresh_a1803b4e3c4265ac29a23d45bf4f6c539fff4ecb33f88628c2f350e988fe0fc4"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7       # 7 days
     
     # CORS Origins
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

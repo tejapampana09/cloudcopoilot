@@ -12,9 +12,11 @@ DB_PATH = "postgresql"
 db_url = settings.DATABASE_URL
 is_sqlite = not db_url or "postgresql" not in db_url
 
-if is_sqlite:
+if is_sqlite and not db_url.startswith("sqlite://"):
     DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cloudpilot.db")
     db_url = f"sqlite:///{DB_FILE}"
+
+if "sqlite" in db_url:
     engine = create_engine(
         db_url,
         connect_args={"check_same_thread": False}

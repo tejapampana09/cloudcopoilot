@@ -1,9 +1,12 @@
 import os
 import re
 import json
+import logging
 from typing import Dict, List, Optional
 from app.schemas.architecture import RepositoryContext
 from app.schemas.analyzer import RepoMetadata
+
+logger = logging.getLogger(__name__)
 
 
 class RepositoryContextBuilder:
@@ -139,8 +142,8 @@ class RepositoryContextBuilder:
             for s in ["dependencies", "devDependencies"]:
                 if s in data and isinstance(data[s], dict):
                     deps.extend(data[s].keys())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error parsing package.json dependency file: {e}")
         return deps
 
     @staticmethod
@@ -154,8 +157,8 @@ class RepositoryContextBuilder:
                         name = re.split(r"==|>=|<=|>|<|@|;", line)[0].strip()
                         if name:
                             deps.append(name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error parsing requirements.txt dependency file: {e}")
         return deps
 
     @staticmethod
@@ -181,8 +184,8 @@ class RepositoryContextBuilder:
                         name = line.split("=")[0].strip().strip('"').strip("'")
                         if name:
                             deps.append(name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error parsing toml dependency file: {e}")
         return deps
 
     @staticmethod
@@ -208,8 +211,8 @@ class RepositoryContextBuilder:
                         parts = line.split()
                         if len(parts) >= 2:
                             deps.append(parts[1])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error parsing go.mod dependency file: {e}")
         return deps
 
     @staticmethod
